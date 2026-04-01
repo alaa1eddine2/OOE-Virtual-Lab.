@@ -12,12 +12,13 @@
 
 ## 👥 TEAM IDENTIFICATION
 *To be completed by the Project Leader:*
-- **Project Leader:** [Full Name]
-- **Group Number:** [e.g., G1, G2...]
+- **Project Leader:** TOUATI AlaaEddine
+- **Group Number:** G4
 - **Team Members:**
-  1. [Name 1]
-  2. [Name 2]
-  3. [Name 3]
+  1. BAROUDI Laid
+  2. BAGHDADI Abderrahim Wael
+  3. BEDAD Ines
+  4. BOUMEZBER Hocine
 
 ---
 
