@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How the Eye Scanner Works</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0e0c09;
+  --bg2:#151310;
+  --bg3:#1c1814;
+  --ink:#f0e8d8;
+  --ink2:#b8a888;
+  --ink3:#7a6a52;
+  --amber:#d4880a;
+  --amber2:#f0aa20;
+  --rust:#c04820;
+  --green:#2a7a50;
+  --rule:#2e2820;
+  --rule2:#3e3628;
+  --highlight:#f0e8d8;
+}
+html,body{width:100%;min-height:100vh;background:var(--bg);color:var(--ink);font-family:'IBM Plex Mono',monospace;overflow-x:hidden;cursor:default}
+
+/* ── GRAIN ── */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:999;opacity:.035;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+}
+
+.page{max-width:1080px;margin:0 auto;padding:0 24px 60px}
+
+/* ── HERO ── */
+.hero{
+  border-bottom:1px solid var(--rule2);
+  padding:48px 0 36px;
+  display:grid;grid-template-columns:1fr auto;align-items:end;gap:24px;
+}
+@media(max-width:640px){.hero{grid-template-columns:1fr;gap:12px}}
+.hero-eyebrow{font-size:10px;letter-spacing:.4em;color:var(--amber);text-transform:uppercase;margin-bottom:12px}
+.hero h1{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(52px,8vw,100px);line-height:.88;
+  color:var(--ink);letter-spacing:.02em;
+}
+.hero h1 span{color:var(--amber)}
+.hero-right{text-align:right}
+.hero-meta{font-size:9px;color:var(--ink3);letter-spacing:.2em;line-height:2.2;text-transform:uppercase}
+.hero-badge{
+  display:inline-block;margin-top:10px;
+  font-size:9px;letter-spacing:.25em;border:1px solid var(--rule2);
+  padding:5px 12px;color:var(--ink3);text-transform:uppercase;
+}
+
+/* ── INTRO ── */
+.intro{
+  padding:40px 0 36px;
+  display:grid;grid-template-columns:1fr 1fr;gap:48px;
+  border-bottom:1px solid var(--rule);
+}
+@media(max-width:700px){.intro{grid-template-columns:1fr;gap:24px}}
+.intro-lead{
+  font-family:'Libre Baskerville',serif;
+  font-size:clamp(16px,2.2vw,22px);line-height:1.55;
+  color:var(--ink2);font-style:italic;
+}
+.intro-lead em{color:var(--amber2);font-style:normal}
+.intro-body{font-size:11px;line-height:1.9;color:var(--ink3)}
+.intro-body p+p{margin-top:12px}
+
+/* ── SECTION LABEL ── */
+.sec{
+  padding:32px 0 16px;
+  font-size:9px;letter-spacing:.4em;text-transform:uppercase;color:var(--ink3);
+  display:flex;align-items:center;gap:12px;
+}
+.sec::after{content:'';flex:1;height:1px;background:var(--rule2)}
+
+/* ── STEPS NAV ── */
+.steps-nav{
+  display:flex;gap:0;border:1px solid var(--rule2);margin-bottom:0;
+  overflow:hidden;
+}
+.step-btn{
+  flex:1;padding:14px 8px;text-align:center;cursor:pointer;
+  border-right:1px solid var(--rule2);background:var(--bg2);
+  transition:background .2s,color .2s;position:relative;
+  font-size:9px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink3);
+}
+.step-btn:last-child{border-right:none}
+.step-btn:hover{background:var(--bg3);color:var(--ink2)}
+.step-btn.active{background:var(--amber);color:var(--bg);font-weight:500}
+.step-btn .sn{
+  font-family:'Bebas Neue',sans-serif;font-size:22px;
+  display:block;line-height:1;margin-bottom:3px;letter-spacing:.05em;
+}
+
+/* ── STEP PANEL ── */
+.step-panels{border:1px solid var(--rule2);border-top:none}
+.step-panel{display:none;animation:fadeIn .3s ease-out}
+.step-panel.active{display:grid;grid-template-columns:1fr 1fr}
+@media(max-width:700px){.step-panel.active{grid-template-columns:1fr}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.panel-canvas{background:var(--bg3);border-right:1px solid var(--rule2)}
+@media(max-width:700px){.panel-canvas{border-right:none;border-bottom:1px solid var(--rule2)}}
+.panel-canvas canvas{display:block;width:100%;height:auto}
+
+.panel-text{padding:28px 24px;background:var(--bg2)}
+.panel-num{
+  font-family:'Bebas Neue',sans-serif;font-size:64px;
+  color:var(--rule2);line-height:1;margin-bottom:4px;
+  user-select:none;
+}
+.panel-title{
+  font-family:'Libre Baskerville',serif;
+  font-size:clamp(17px,2vw,22px);color:var(--ink);
+  margin-bottom:14px;line-height:1.2;
+}
+.panel-body{font-size:11px;line-height:1.9;color:var(--ink3)}
+.panel-body p+p{margin-top:10px}
+.panel-body strong{color:var(--ink2);font-weight:500}
+.panel-highlight{
+  margin-top:16px;padding:10px 14px;
+  border-left:3px solid var(--amber);
+  background:rgba(212,136,10,0.07);
+  font-size:10px;color:var(--ink2);line-height:1.7;font-style:italic;
+}
+
+/* ── FULL DIAGRAM ── */
+.full-diag{
+  border:1px solid var(--rule2);
+  background:var(--bg2);margin-bottom:0;overflow:hidden;
+}
+.full-diag canvas{display:block;width:100%;height:auto}
+.full-diag-caption{
+  padding:12px 16px;border-top:1px solid var(--rule);
+  font-size:9px;color:var(--ink3);letter-spacing:.15em;text-transform:uppercase;
+  display:flex;justify-content:space-between;
+}
+
+/* ── SPECS TABLE ── */
+.specs{border:1px solid var(--rule2);margin-bottom:0;overflow:hidden}
+.specs-row{
+  display:grid;grid-template-columns:2fr 1fr 1fr;
+  border-bottom:1px solid var(--rule);
+  transition:background .15s;
+}
+.specs-row:last-child{border-bottom:none}
+.specs-row:hover{background:var(--bg3)}
+.specs-row.header{background:var(--bg3);cursor:default}
+.specs-row.header:hover{background:var(--bg3)}
+.specs-cell{
+  padding:12px 16px;font-size:11px;color:var(--ink3);
+  border-right:1px solid var(--rule);
+}
+.specs-cell:last-child{border-right:none}
+.specs-row.header .specs-cell{
+  font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink3);
+}
+.specs-val{color:var(--amber2);font-weight:500}
+.specs-note{color:var(--ink3);font-size:10px}
+
+/* ── COMPARISON ── */
+.compare{
+  display:grid;grid-template-columns:1fr 1fr;
+  border:1px solid var(--rule2);gap:0;
+}
+@media(max-width:600px){.compare{grid-template-columns:1fr}}
+.compare-col{padding:24px 20px;border-right:1px solid var(--rule2)}
+.compare-col:last-child{border-right:none}
+.compare-tag{font-size:9px;letter-spacing:.3em;text-transform:uppercase;margin-bottom:10px}
+.compare-col:nth-child(1) .compare-tag{color:var(--amber)}
+.compare-col:nth-child(2) .compare-tag{color:var(--green)}
+.compare-title{font-family:'Libre Baskerville',serif;font-size:17px;color:var(--ink);margin-bottom:16px}
+.compare-list{list-style:none}
+.compare-list li{font-size:11px;color:var(--ink3);padding:7px 0;border-bottom:1px solid var(--rule);line-height:1.5}
+.compare-list li:last-child{border-bottom:none}
+.compare-list li::before{content:'— ';color:var(--ink3)}
+
+/* ── FOOTER ── */
+.footer-bar{
+  margin-top:48px;padding-top:20px;border-top:1px solid var(--rule);
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:9px;color:var(--ink3);letter-spacing:.2em;text-transform:uppercase;
+}
+.back-link{
+  font-size:10px;color:var(--amber);letter-spacing:.2em;
+  text-decoration:none;border-bottom:1px solid transparent;
+  transition:border-color .2s;cursor:pointer;
+}
+.back-link:hover{border-color:var(--amber)}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-left">
+      <div class="hero-eyebrow">Technical Reference — Security Systems</div>
+      <h1>How the<br><span>Eye</span><br>Scanner<br>Works</h1>
+    </div>
+    <div class="hero-right">
+      <div class="hero-meta">
+        Document type: Explainer<br>
+        Subject: Optical biometrics<br>
+        Model: Mechanical eye lens<br>
+        Classification: Academic
+      </div>
+      <div class="hero-badge">Problem 4 — Companion</div>
+    </div>
+  </div>
+
+  <!-- INTRO -->
+  <div class="intro">
+    <div class="intro-lead">
+      A security scanner simulates a human eye — using a <em>variable lens</em> to focus on close-up tokens and verify identity through optical imaging.
+    </div>
+    <div class="intro-body">
+      <p>The mechanical eye works on the same optical principle as the human eye: a lens with variable focal power focuses incoming light onto a fixed detector screen (the "retina").</p>
+      <p>When a security token is presented, the scanner must <strong>accommodate</strong> — increasing its optical power to bend light more sharply so the image lands precisely on the sensor.</p>
+      <p>The entire process happens in microseconds, but it follows strict geometric optics: the thin lens conjugate relation governs every step.</p>
+    </div>
+  </div>
+
+  <!-- STEP-BY-STEP EXPLAINER -->
+  <div class="sec">Step-by-step process</div>
+
+  <div class="steps-nav">
+    <div class="step-btn active" onclick="showStep(0)"><span class="sn">01</span>Light Capture</div>
+    <div class="step-btn" onclick="showStep(1)"><span class="sn">02</span>Lens Focus</div>
+    <div class="step-btn" onclick="showStep(2)"><span class="sn">03</span>Accommodation</div>
+    <div class="step-btn" onclick="showStep(3)"><span class="sn">04</span>Image Formed</div>
+    <div class="step-btn" onclick="showStep(4)"><span class="sn">05</span>Verification</div>
+  </div>
+
+  <div class="step-panels">
+    <!-- Step 1 -->
+    <div class="step-panel active" id="panel-0">
+      <div class="panel-canvas"><canvas id="c0" width="520" height="320"></canvas></div>
+      <div class="panel-text">
+        <div class="panel-num">01</div>
+        <div class="panel-title">Light Capture from the Token</div>
+        <div class="panel-body">
+          <p>The security token — a card, QR pattern, or biometric marker — is placed at a standard reading distance of <strong>OA = −25 cm</strong> from the scanner's optical center.</p>
+          <p>Light reflects off every point on the token's surface. Each point emits a <strong>diverging cone of rays</strong> that travels toward the mechanical eye's lens.</p>
+          <p>The scanner cannot process all these rays — it only needs <strong>three principal rays</strong> per point to construct the full image geometrically.</p>
+        </div>
+        <div class="panel-highlight">Key principle: Every point on the object emits light in all directions. The lens collects and converges them back to a single point on the sensor.</div>
+      </div>
+    </div>
+    <!-- Step 2 -->
+    <div class="step-panel" id="panel-1">
+      <div class="panel-canvas"><canvas id="c1" width="520" height="320"></canvas></div>
+      <div class="panel-text">
+        <div class="panel-num">02</div>
+        <div class="panel-title">The Variable Lens</div>
+        <div class="panel-body">
+          <p>The mechanical eye contains a <strong>variable-power lens</strong> at its optical center O. Unlike a camera with a fixed lens, this lens can change its focal length by physically deforming — just like the crystalline lens in a human eye.</p>
+          <p>The lens is described by its <strong>optical power P</strong> measured in dioptres (δ), defined as P = 1/f′. A higher power means a shorter focal length and more aggressive bending of light.</p>
+          <p>For a distant object, the relaxed lens has <strong>P = 66.67 δ</strong>. For a close token, it must increase to accommodate.</p>
+        </div>
+        <div class="panel-highlight">The lens is the only moving part. The retina position OA′ = +15 mm is fixed. All focus adjustment happens through lens deformation.</div>
+      </div>
+    </div>
+    <!-- Step 3 -->
+    <div class="step-panel" id="panel-2">
+      <div class="panel-canvas"><canvas id="c2" width="520" height="320"></canvas></div>
+      <div class="panel-text">
+        <div class="panel-num">03</div>
+        <div class="panel-title">Accommodation — Adjusting Power</div>
+        <div class="panel-body">
+          <p>When the token moves close, diverging rays arrive at a steeper angle. The relaxed lens is <strong>not powerful enough</strong> — the image would form behind the retina, producing a blurred reading.</p>
+          <p>The mechanical actuator deforms the lens, increasing its curvature. This raises the optical power from <strong>66.67 δ → 70.67 δ</strong>, shortening f′ from 15 mm to 14.15 mm.</p>
+          <p>The extra power needed is the <strong>accommodation amplitude</strong>: ΔP = 4.00 δ. This is exactly the effort the lens mechanism must exert.</p>
+        </div>
+        <div class="panel-highlight">Formula: 1/f′_acc = 1/OA′ − 1/OA = 1/0.015 − 1/(−0.25) = 66.67 + 4.00 = 70.67 δ</div>
+      </div>
+    </div>
+    <!-- Step 4 -->
+    <div class="step-panel" id="panel-3">
+      <div class="panel-canvas"><canvas id="c3" width="520" height="320"></canvas></div>
+      <div class="panel-text">
+        <div class="panel-num">04</div>
+        <div class="panel-title">Sharp Image Formed on the Retina</div>
+        <div class="panel-body">
+          <p>With the correct lens power applied, all three principal rays from each object point <strong>converge precisely on the retina</strong> at OA′ = +15 mm.</p>
+          <p>The image formed is <strong>real, inverted, and reduced</strong> — typical of a converging lens with the object beyond the focal point. The sensor records this inverted image and the software corrects for orientation.</p>
+          <p>Sharpness is measured by how tightly the rays converge. Any deviation in lens power causes a <strong>circle of confusion</strong> instead of a point — detectable as blur.</p>
+        </div>
+        <div class="panel-highlight">The image is real (rays physically cross), inverted (upside-down), and magnified by m = OA′/OA = 0.015/0.25 = 0.06×</div>
+      </div>
+    </div>
+    <!-- Step 5 -->
+    <div class="step-panel" id="panel-4">
+      <div class="panel-canvas"><canvas id="c4" width="520" height="320"></canvas></div>
+      <div class="panel-text">
+        <div class="panel-num">05</div>
+        <div class="panel-title">Signal Processing & Verification</div>
+        <div class="panel-body">
+          <p>The retina sensor (a CCD or CMOS array) converts the optical image into an electrical signal. Each pixel records light intensity at its position.</p>
+          <p>The raw signal is fed to a processing unit that checks the token's <strong>pattern, geometry, and encoding</strong> against a stored database entry.</p>
+          <p>If the optical power was incorrect and the image is blurry, the <strong>contrast drops below threshold</strong> and the scanner signals a re-focus before re-reading. Modern scanners complete this loop in under 50 ms.</p>
+        </div>
+        <div class="panel-highlight">The scanner uses the optical power value P_acc as a calibration check — it verifies the lens reached the correct power before trusting the image.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FULL SYSTEM DIAGRAM -->
+  <div class="sec">Full System Diagram</div>
+  <div class="full-diag">
+    <canvas id="cFull" width="1040" height="280"></canvas>
+    <div class="full-diag-caption">
+      <span>Complete optical path — token to sensor</span>
+      <span>Scale: approximate — not to physical proportions</span>
+    </div>
+  </div>
+
+  <!-- SPECS -->
+  <div class="sec">Key Parameters</div>
+  <div class="specs">
+    <div class="specs-row header">
+      <div class="specs-cell">Parameter</div>
+      <div class="specs-cell">Value</div>
+      <div class="specs-cell">Note</div>
+    </div>
+    <div class="specs-row">
+      <div class="specs-cell">Retina distance OA′</div>
+      <div class="specs-cell specs-val">+15 mm</div>
+      <div class="specs-cell specs-note">Fixed — never changes</div>
+    </div>
+    <div class="specs-row">
+      <div class="specs-cell">Standard reading distance |OA|</div>
+      <div class="specs-cell specs-val">25 cm</div>
+      <div class="specs-cell specs-note">Token placement</div>
+    </div>
+    <div class="specs-row">
+      <div class="specs-cell">Relaxed optical power P_relaxed</div>
+      <div class="specs-cell specs-val">66.67 δ</div>
+      <div class="specs-cell specs-note">Object at infinity</div>
+    </div>
+    <div class="specs-row">
+      <div class="specs-cell">Accommodated power P_acc</div>
+      <div class="specs-cell specs-val">70.67 δ</div>
+      <div class="specs-cell specs-note">Token at 25 cm</div>
+    </div>
+    <div class="specs-row">
+      <div class="specs-cell">Accommodation amplitude ΔP</div>
+      <div class="specs-cell specs-val">4.00 δ</div>
+      <div class="specs-cell specs-note">Extra effort required</div>
+    </div>
+    <div class="specs-row">
+      <div class="specs-cell">Focal length (relaxed) f′</div>
+      <div class="specs-cell specs-val">15.00 mm</div>
+      <div class="specs-cell specs-note">f′ = OA′</div>
+    </div>
+    <div class="specs-row">
+      <div class="specs-cell">Focal length (accommodated) f′</div>
+      <div class="specs-cell specs-val">14.15 mm</div>
+      <div class="specs-cell specs-note">Shorter = more power</div>
+    </div>
+    <div class="specs-row">
+      <div class="specs-cell">Magnification m</div>
+      <div class="specs-cell specs-val">−0.06×</div>
+      <div class="specs-cell specs-note">Real, inverted, reduced</div>
+    </div>
+  </div>
+
+  <!-- COMPARISON -->
+  <div class="sec">Human Eye vs. Mechanical Eye</div>
+  <div class="compare">
+    <div class="compare-col">
+      <div class="compare-tag">Human Eye</div>
+      <div class="compare-title">Biological Lens System</div>
+      <ul class="compare-list">
+        <li>Crystalline lens deforms via ciliary muscles</li>
+        <li>Retina = photoreceptors (rods & cones)</li>
+        <li>Typical OA′ ≈ 17 mm (axial length)</li>
+        <li>Accommodation range: ~14 δ (young adult)</li>
+        <li>Responds in ~350 ms</li>
+        <li>Degrades with age (presbyopia)</li>
+        <li>Limited by biological tissue properties</li>
+      </ul>
+    </div>
+    <div class="compare-col">
+      <div class="compare-tag">Mechanical Eye</div>
+      <div class="compare-title">Engineered Optical System</div>
+      <ul class="compare-list">
+        <li>Piezoelectric or electrowetting lens actuator</li>
+        <li>Retina = CCD / CMOS pixel array</li>
+        <li>OA′ = 15 mm (fixed by design)</li>
+        <li>Accommodation amplitude: 4.00 δ (this model)</li>
+        <li>Responds in &lt; 50 ms</li>
+        <li>Does not degrade over time</li>
+        <li>Precision limited only by manufacturing tolerance</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="footer-bar">
+    <span>Security Scanner — Optical Explainer</span>
+    <span>Academic Reference 2025</span>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════
+   STEP NAVIGATION
+═══════════════════════════════════ */
+function showStep(i){
+  document.querySelectorAll('.step-btn').forEach((b,j)=>b.classList.toggle('active',j===i));
+  document.querySelectorAll('.step-panel').forEach((p,j)=>p.classList.toggle('active',j===i));
+}
+
+/* ═══════════════════════════════════
+   SHARED DRAW UTILS
+═══════════════════════════════════ */
+const DARK='#1c1814', AMBER='#d4880a', AMBER2='#f0aa20',
+      GREEN='#2a7a50', RUST='#c04820', INK='#f0e8d8',
+      DIM='rgba(240,232,216,0.3)', DIMMER='rgba(240,232,216,0.12)',
+      RULE='rgba(60,50,40,0.8)';
+
+function arrow(ctx,x1,y1,x2,y2,sz,col){
+  const a=Math.atan2(y2-y1,x2-x1);
+  ctx.save();ctx.translate(x2,y2);ctx.rotate(a);
+  ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(-sz,-sz*.42);ctx.lineTo(-sz,sz*.42);
+  ctx.closePath();ctx.fillStyle=col;ctx.fill();ctx.restore();
+}
+
+function label(ctx,x,y,txt,col='rgba(240,232,216,0.55)',size=9,align='center'){
+  ctx.font=`${size}px "IBM Plex Mono"`;ctx.fillStyle=col;ctx.textAlign=align;
+  ctx.fillText(txt,x,y);
+}
+
+function dashedLine(ctx,x1,y1,x2,y2,col,w=1,dash=[6,4]){
+  ctx.save();ctx.setLineDash(dash);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);
+  ctx.strokeStyle=col;ctx.lineWidth=w;ctx.stroke();ctx.restore();
+}
+
+function solidLine(ctx,x1,y1,x2,y2,col,w=1.5,glow=0){
+  ctx.save();if(glow){ctx.shadowColor=col;ctx.shadowBlur=glow;}
+  ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);
+  ctx.strokeStyle=col;ctx.lineWidth=w;ctx.stroke();
+  ctx.restore();
+}
+
+/* ── Background for step canvases ── */
+function stepBg(ctx,w,h){
+  ctx.fillStyle=DARK;ctx.fillRect(0,0,w,h);
+  for(let x=0;x<w;x+=24){solidLine(ctx,x,0,x,h,DIMMER,.5);}
+  for(let y=0;y<h;y+=24){solidLine(ctx,0,y,w,y,DIMMER,.5);}
+}
+
+/* ═══════════════════════════════════
+   ANIMATION TICK
+═══════════════════════════════════ */
+let T=0;
+function tick(){
+  T++;
+  drawStep0(T); drawStep1(T); drawStep2(T); drawStep3(T); drawStep4(T);
+  drawFull(T);
+  requestAnimationFrame(tick);
+}
+
+/* ═══════════════════════════════════
+   STEP 0 — Light capture: diverging cones
+═══════════════════════════════════ */
+function drawStep0(t){
+  const cv=document.getElementById('c0'),ctx=cv.getContext('2d');
+  const W=520,H=320,cy=H/2;
+  stepBg(ctx,W,H);
+
+  // Optical axis
+  dashedLine(ctx,0,cy,W,cy,'rgba(240,232,216,0.15)',1,[10,6]);
+
+  // Token (object)
+  const tx=80,th=70;
+  solidLine(ctx,tx,cy,tx,cy-th,RUST,2.5);
+  arrow(ctx,tx,cy+1,tx,cy-th-1,8,RUST);
+  solidLine(ctx,tx-8,cy,tx+8,cy,RUST,2);
+  label(ctx,tx,cy+18,'TOKEN',RUST+'cc',9);
+
+  // Lens
+  const lx=340,lRy=48,lRx=9;
+  ctx.save();
+  const lg=ctx.createLinearGradient(lx-20,0,lx+20,0);
+  lg.addColorStop(0,'rgba(80,150,220,0)');
+  lg.addColorStop(.5,'rgba(120,180,255,0.15)');
+  lg.addColorStop(1,'rgba(80,150,220,0)');
+  ctx.beginPath();ctx.ellipse(lx,cy,lRx,lRy,0,0,Math.PI*2);
+  ctx.fillStyle=lg;ctx.fill();
+  ctx.strokeStyle='rgba(160,210,255,0.6)';ctx.lineWidth=2;
+  ctx.shadowColor='rgba(140,200,255,0.4)';ctx.shadowBlur=10;
+  ctx.stroke();ctx.restore();
+  label(ctx,lx,cy+lRy+16,'LENS',DIM,9);
+
+  // Diverging rays from tip of object — animated fan
+  const tipX=tx, tipY=cy-th;
+  const numRays=9;
+  ctx.save();
+  for(let i=0;i<numRays;i++){
+    const spread=0.5;
+    const baseAng=Math.atan2(cy-tipY,lx-tipX);
+    const ang=baseAng + (i/(numRays-1)-0.5)*spread;
+    // animated travelling dot
+    const rayLen=Math.sqrt((lx-tipX)**2+(cy-tipY)**2);
+    const progress=((t*1.2 + i*18)%rayLen)/rayLen;
+    const rx2=tipX+Math.cos(ang)*rayLen*progress;
+    const ry2=tipY+Math.sin(ang)*rayLen*progress;
+    // faint full ray
+    ctx.globalAlpha=0.12;
+    ctx.beginPath();ctx.moveTo(tipX,tipY);ctx.lineTo(tipX+Math.cos(ang)*rayLen,tipY+Math.sin(ang)*rayLen);
+    ctx.strokeStyle=AMBER;ctx.lineWidth=1;ctx.stroke();
+    // bright travelling dot
+    ctx.globalAlpha=0.9;
+    ctx.beginPath();ctx.arc(rx2,ry2,2,0,Math.PI*2);
+    ctx.fillStyle=AMBER2;ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  ctx.restore();
+
+  // diverging cone outline
+  ctx.save();ctx.globalAlpha=0.25;
+  solidLine(ctx,tipX,tipY,lx,cy-lRy,AMBER2,1);
+  solidLine(ctx,tipX,tipY,lx,cy+lRy,AMBER2,1);
+  ctx.restore();
+
+  // Labels
+  label(ctx,200,cy-80,'diverging cone of rays',DIM,9);
+  label(ctx,200,cy-68,'from object tip',DIM,9);
+
+  // Distance annotation
+  ctx.save();ctx.setLineDash([4,3]);
+  solidLine(ctx,tx,cy+60,lx,cy+60,'rgba(240,232,216,0.2)',1);
+  ctx.restore();
+  label(ctx,(tx+lx)/2,cy+74,'|OA| = 25 cm',DIM,9);
+}
+
+/* ═══════════════════════════════════
+   STEP 1 — Variable lens anatomy
+═══════════════════════════════════ */
+function drawStep1(t){
+  const cv=document.getElementById('c1'),ctx=cv.getContext('2d');
+  const W=520,H=320,cx=W/2,cy=H/2;
+  stepBg(ctx,W,H);
+
+  // Optical axis
+  dashedLine(ctx,0,cy,W,cy,'rgba(240,232,216,0.15)',1,[10,6]);
+
+  // Animate lens power oscillation (breathe effect)
+  const breathe=0.5+Math.sin(t*0.04)*0.5;
+  const lRy=44+breathe*18, lRx=8+breathe*8;
+
+  // Lens glow
+  ctx.save();
+  const lg=ctx.createRadialGradient(cx,cy,0,cx,cy,lRy+20);
+  lg.addColorStop(0,`rgba(212,136,10,${0.12+breathe*0.08})`);
+  lg.addColorStop(1,'rgba(212,136,10,0)');
+  ctx.beginPath();ctx.arc(cx,cy,lRy+20,0,Math.PI*2);ctx.fillStyle=lg;ctx.fill();
+  ctx.restore();
+
+  // Lens body
+  ctx.save();
+  ctx.beginPath();ctx.ellipse(cx,cy,lRx,lRy,0,0,Math.PI*2);
+  ctx.fillStyle=`rgba(120,180,255,${0.07+breathe*0.07})`;ctx.fill();
+  ctx.strokeStyle=`rgba(160,210,255,${0.5+breathe*0.3})`;ctx.lineWidth=2;
+  ctx.shadowColor='rgba(160,210,255,0.4)';ctx.shadowBlur=10+breathe*10;
+  ctx.stroke();ctx.restore();
+
+  // Principal planes H H'
+  dashedLine(ctx,cx,cy-lRy-10,cx,cy+lRy+10,'rgba(160,210,255,0.3)',1,[4,3]);
+  label(ctx,cx,cy-lRy-18,"H    H'",DIM,10);
+  label(ctx,cx,cy+4,'O','rgba(255,255,255,0.7)',11);
+
+  // Power readout
+  const P=(66.67+breathe*4).toFixed(1);
+  label(ctx,cx,cy-lRy-34,`P = ${P} δ`,'rgba(212,136,10,0.9)',11);
+  label(ctx,cx,cy+lRy+30,`f′ = ${(1000/parseFloat(P)).toFixed(2)} mm`,DIM,9);
+
+  // Left arrow (incoming parallel)
+  for(let i=-1;i<=1;i++){
+    const ry=cy+i*28;
+    const phase=((t*1.5)%120);
+    solidLine(ctx,40,ry,cx-lRx-5,ry,'rgba(240,200,100,0.3)',1);
+    ctx.beginPath();ctx.arc(40+phase,ry,2.5,0,Math.PI*2);
+    ctx.fillStyle=AMBER2;ctx.globalAlpha=0.8;ctx.fill();ctx.globalAlpha=1;
+  }
+  arrow(ctx,cx-lRx-14,cy,cx-lRx-4,cy,7,'rgba(240,200,100,0.5)');
+  label(ctx,80,cy-42,'incoming',DIM,9);
+  label(ctx,80,cy-30,'light rays',DIM,9);
+
+  // Right side — converging
+  const fBack=cx+lRx+60;
+  for(let i=-1;i<=1;i++){
+    const ry=cy+i*28;
+    const slope=-ry/(fBack-cx-lRx);
+    solidLine(ctx,cx+lRx,ry,fBack,cy,'rgba(100,220,150,0.3)',1);
+    const phase=((t*1.5+40)%80)/80;
+    const rx2=cx+lRx+(fBack-cx-lRx)*phase;
+    const ry2=ry+(cy-ry)*phase;
+    ctx.beginPath();ctx.arc(rx2,ry2,2.5,0,Math.PI*2);
+    ctx.fillStyle=GREEN;ctx.globalAlpha=0.8;ctx.fill();ctx.globalAlpha=1;
+  }
+  label(ctx,fBack+20,cy-14,"F′",'rgba(100,220,150,0.6)',10);
+  ctx.beginPath();ctx.moveTo(fBack,cy-7);ctx.lineTo(fBack,cy+7);
+  ctx.strokeStyle='rgba(100,220,150,0.4)';ctx.lineWidth=1.5;ctx.stroke();
+
+  label(ctx,cx,cy+lRy+50,'lens deforms → power changes → f′ adjusts',DIM,9);
+}
+
+/* ═══════════════════════════════════
+   STEP 2 — Accommodation comparison
+═══════════════════════════════════ */
+function drawStep2(t){
+  const cv=document.getElementById('c2'),ctx=cv.getContext('2d');
+  const W=520,H=320,cy=H/2;
+  stepBg(ctx,W,H);
+
+  // Split: relaxed (top half) vs accommodated (bottom half)
+  solidLine(ctx,0,cy,W,cy,'rgba(60,50,40,0.8)',1);
+  label(ctx,10,cy-8,'RELAXED  (P = 66.67 δ)','rgba(240,200,100,0.5)',8,'left');
+  label(ctx,10,cy+14,'ACCOMMODATED  (P = 70.67 δ)','rgba(100,220,150,0.5)',8,'left');
+
+  const drawHalf=(yBase,sign,P,col,lensRy)=>{
+    const lx=240,retX=410, OAp=15, mmPx=(retX-lx)/OAp;
+    const objX=60,objH=46;
+
+    // axis
+    dashedLine(ctx,0,yBase,W,yBase,'rgba(240,232,216,0.08)',1,[8,5]);
+
+    // object
+    solidLine(ctx,objX,yBase,objX,yBase-objH*sign,RUST,2);
+    arrow(ctx,objX,yBase+sign,objX,yBase-objH*sign-sign,7,RUST);
+
+    // lens
+    ctx.save();
+    ctx.beginPath();ctx.ellipse(lx,yBase,7+lensRy*.12,lensRy,0,0,Math.PI*2);
+    ctx.strokeStyle=col+'aa';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.restore();
+
+    // retina
+    solidLine(ctx,retX,yBase-50,retX,yBase+50,GREEN,2);
+
+    // principal ray 1
+    const tipX=objX,tipY=yBase-objH*sign;
+    // parallel → through F'
+    ctx.save();ctx.setLineDash([6,4]);ctx.lineDashOffset=-t*0.9;
+    solidLine(ctx,tipX,tipY,lx,tipY,AMBER,1.3);
+    solidLine(ctx,lx,tipY,retX,yBase,AMBER,1.3);
+    // center ray
+    solidLine(ctx,tipX,tipY,retX,yBase+(yBase-tipY)*(retX-lx)/(lx-tipX)*-1,GREEN+'aa',1.3);
+    ctx.restore();
+
+    // image formed or blurred
+    if(P===66.67){
+      // blurry — circle of confusion (image behind retina)
+      const blurX=retX+30;
+      ctx.save();ctx.globalAlpha=0.4;
+      ctx.beginPath();ctx.arc(retX,yBase,8,0,Math.PI*2);
+      ctx.strokeStyle=RUST;ctx.lineWidth=1.5;ctx.setLineDash([3,3]);ctx.stroke();
+      ctx.restore();
+      label(ctx,retX+10,yBase-12,'blurred','rgba(192,72,32,0.7)',9,'left');
+    } else {
+      ctx.beginPath();ctx.arc(retX,yBase,4,0,Math.PI*2);
+      ctx.fillStyle=GREEN+'ee';ctx.shadowColor=GREEN;ctx.shadowBlur=8;ctx.fill();ctx.shadowBlur=0;
+      label(ctx,retX+10,yBase-10,'focused ✓','rgba(42,122,80,0.9)',9,'left');
+    }
+  };
+
+  drawHalf(cy*.5, 1, 66.67, AMBER, 35);
+  drawHalf(cy*1.5, 1, 70.67, GREEN, 50);
+
+  // ΔP arrow on right
+  solidLine(ctx,490,cy*.5,490,cy*1.5,'rgba(240,232,216,0.2)',1);
+  arrow(ctx,490,cy*.5+4,490,cy*.5+2,6,'rgba(240,232,216,0.4)');
+  arrow(ctx,490,cy*1.5-4,490,cy*1.5-2,6,'rgba(240,232,216,0.4)');
+  label(ctx,505,cy,'ΔP=4δ','rgba(240,232,216,0.4)',9,'left');
+}
+
+/* ═══════════════════════════════════
+   STEP 3 — Sharp image formed
+═══════════════════════════════════ */
+function drawStep3(t){
+  const cv=document.getElementById('c3'),ctx=cv.getContext('2d');
+  const W=520,H=320,cy=H/2;
+  stepBg(ctx,W,H);
+
+  const lx=200, retX=400, OAp=15, mmPx=(retX-lx)/OAp;
+  const objX=70, objH=62;
+
+  dashedLine(ctx,0,cy,W,cy,'rgba(240,232,216,0.12)',1,[10,6]);
+
+  // Object
+  solidLine(ctx,objX,cy,objX,cy-objH,RUST,2.5);
+  arrow(ctx,objX,cy+1,objX,cy-objH-1,8,RUST);
+  solidLine(ctx,objX-7,cy,objX+7,cy,RUST,2);
+  label(ctx,objX,cy+18,'Token',RUST+'bb',9);
+
+  // Lens
+  ctx.save();
+  ctx.beginPath();ctx.ellipse(lx,cy,10,52,0,0,Math.PI*2);
+  ctx.fillStyle='rgba(120,180,255,0.07)';ctx.fill();
+  ctx.strokeStyle='rgba(160,210,255,0.6)';ctx.lineWidth=2;
+  ctx.shadowColor='rgba(160,210,255,0.3)';ctx.shadowBlur=8;ctx.stroke();ctx.restore();
+  label(ctx,lx,cy+64,'Lens\n70.67δ','rgba(160,210,255,0.5)',9);
+
+  // Retina
+  ctx.save();
+  const rg=ctx.createLinearGradient(retX,cy-90,retX,cy+90);
+  rg.addColorStop(0,'rgba(42,122,80,0)');rg.addColorStop(.5,'rgba(42,122,80,0.9)');rg.addColorStop(1,'rgba(42,122,80,0)');
+  ctx.beginPath();ctx.moveTo(retX,cy-85);ctx.lineTo(retX,cy+85);
+  ctx.strokeStyle=rg;ctx.lineWidth=3;ctx.shadowColor='rgba(42,122,80,0.4)';ctx.shadowBlur=8;ctx.stroke();
+  ctx.restore();
+  label(ctx,retX,cy+100,"A′ Retina",'rgba(42,122,80,0.7)',9);
+
+  const tipX=objX, tipY=cy-objH;
+  const imgX=retX;
+  const m=OAp/250*-1; // magnification ≈ -0.06
+  const imgH=objH*Math.abs(m);
+  const imgY=cy+imgH; // inverted
+
+  // 3 rays, animated
+  ctx.save();ctx.setLineDash([7,4]);ctx.lineDashOffset=-t*1.1;
+  // Ray 1 amber
+  solidLine(ctx,tipX,tipY,lx,tipY,AMBER2,2,4);
+  solidLine(ctx,lx,tipY,imgX,imgY,AMBER2,2,4);
+  // Ray 2 green
+  solidLine(ctx,tipX,tipY,lx,cy,GREEN,1.8,3);
+  solidLine(ctx,lx,cy,imgX,imgY,GREEN,1.8,3);
+  // Ray 3 rust
+  const fFront=lx-50;
+  const s3=(tipY-cy)/(tipX-fFront);
+  const yL3=cy+s3*(lx-fFront);
+  solidLine(ctx,tipX,tipY,lx,yL3,RUST,1.5,3);
+  solidLine(ctx,lx,yL3,imgX,yL3,RUST,1.5,3);
+  ctx.restore();
+  solidLine(ctx,imgX,yL3,imgX,imgY,RUST+'55',1);
+
+  // Image (inverted arrow)
+  solidLine(ctx,imgX,cy,imgX,imgY,'rgba(42,122,80,0.8)',2);
+  arrow(ctx,imgX,cy-1,imgX,imgY+1,7,'rgba(42,122,80,0.8)');
+
+  // Convergence point
+  const pulse=0.5+Math.sin(t*0.08)*0.5;
+  ctx.beginPath();ctx.arc(imgX,imgY,6+pulse*3,0,Math.PI*2);
+  ctx.strokeStyle=`rgba(42,122,80,${0.3*pulse})`;ctx.lineWidth=1.5;ctx.stroke();
+  ctx.beginPath();ctx.arc(imgX,imgY,4,0,Math.PI*2);
+  ctx.fillStyle='rgba(42,122,80,0.95)';ctx.shadowColor='rgba(42,122,80,0.6)';ctx.shadowBlur=12;ctx.fill();ctx.shadowBlur=0;
+
+  label(ctx,imgX+10,imgY-8,'Image ✓',GREEN+'cc',9,'left');
+  label(ctx,imgX+10,imgY+6,'Real · Inverted',DIM,8,'left');
+  label(ctx,imgX+10,imgY+18,'m = −0.06×',DIM,8,'left');
+
+  // OA dimension
+  ctx.save();ctx.setLineDash([3,3]);
+  solidLine(ctx,objX,cy+135,lx,cy+135,'rgba(192,72,32,0.3)',1);
+  ctx.restore();
+  label(ctx,(objX+lx)/2,cy+148,'OA = 25 cm',RUST+'88',8);
+  ctx.save();ctx.setLineDash([3,3]);
+  solidLine(ctx,lx,cy+155,retX,cy+155,'rgba(42,122,80,0.3)',1);
+  ctx.restore();
+  label(ctx,(lx+retX)/2,cy+168,"OA′ = 15 mm",'rgba(42,122,80,0.6)',8);
+}
+
+/* ═══════════════════════════════════
+   STEP 4 — Sensor & verification
+═══════════════════════════════════ */
+function drawStep4(t){
+  const cv=document.getElementById('c4'),ctx=cv.getContext('2d');
+  const W=520,H=320,cy=H/2;
+  stepBg(ctx,W,H);
+
+  // Sensor grid (retina / CCD)
+  const sx=340,sy=cy-70,sw=80,sh=140,cols=8,rows=14;
+  const cw=sw/cols,ch=sh/rows;
+
+  ctx.save();
+  ctx.strokeStyle='rgba(42,122,80,0.3)';ctx.lineWidth=0.5;
+  for(let r=0;r<=rows;r++){ctx.beginPath();ctx.moveTo(sx,sy+r*ch);ctx.lineTo(sx+sw,sy+r*ch);ctx.stroke();}
+  for(let c=0;c<=cols;c++){ctx.beginPath();ctx.moveTo(sx+c*cw,sy);ctx.lineTo(sx+c*cw,sy+sh);ctx.stroke();}
+
+  // Simulate signal pattern on sensor — wave sweeps across
+  const scanLine=Math.floor(((t*0.5)%(rows+8)));
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const bright=Math.max(0,(1-(Math.abs(r-scanLine)/3)))*0.85;
+      const isToken=(c>1&&c<6&&r>3&&r<11)?1:0;
+      const alpha=(isToken*0.4+bright*0.5)*0.9;
+      if(alpha>0.02){
+        ctx.fillStyle=`rgba(42,122,80,${alpha})`;
+        ctx.fillRect(sx+c*cw+0.5,sy+r*ch+0.5,cw-1,ch-1);
+      }
+    }
+  }
+  ctx.strokeStyle='rgba(42,122,80,0.6)';ctx.lineWidth=1;
+  ctx.strokeRect(sx,sy,sw,sh);
+  label(ctx,sx+sw/2,sy-12,'CCD Sensor Array','rgba(42,122,80,0.7)',9);
+  ctx.restore();
+
+  // Scan line highlight
+  if(scanLine<rows){
+    ctx.save();ctx.globalAlpha=0.5;
+    ctx.fillStyle='rgba(240,200,100,0.15)';
+    ctx.fillRect(sx,sy+scanLine*ch,sw,ch);
+    ctx.restore();
+  }
+
+  // Optical path (simplified)
+  const lx=180;
+  dashedLine(ctx,0,cy,sx,cy,'rgba(240,232,216,0.12)',1,[10,6]);
+  ctx.save();
+  ctx.beginPath();ctx.ellipse(lx,cy,8,45,0,0,Math.PI*2);
+  ctx.strokeStyle='rgba(160,210,255,0.5)';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.restore();
+
+  // Rays converging to sensor
+  ctx.save();ctx.setLineDash([5,4]);ctx.lineDashOffset=-t*0.8;
+  for(let i=-1;i<=1;i++){
+    solidLine(ctx,60,cy+i*40,lx,cy+i*35,AMBER+'66',1.2);
+    solidLine(ctx,lx,cy+i*35,sx,cy+i*(sh/2-4),GREEN+'88',1.2);
+  }
+  ctx.restore();
+
+  // Processing unit
+  const px=420,py=cy-100,pw=80,ph=50;
+  ctx.save();
+  ctx.fillStyle='rgba(30,24,20,0.9)';ctx.strokeStyle='rgba(60,50,40,0.8)';ctx.lineWidth=1.5;
+  ctx.fillRect(px,py,pw,ph);ctx.strokeRect(px,py,pw,ph);
+  label(ctx,px+pw/2,py+ph/2-6,'CPU','rgba(240,200,100,0.7)',9);
+  label(ctx,px+pw/2,py+ph/2+8,'PROCESS','rgba(240,200,100,0.5)',7);
+  // connection line
+  solidLine(ctx,sx+sw/2,sy,'rgba(42,122,80,0.4)',1);
+  ctx.setLineDash([4,3]);
+  solidLine(ctx,sx+sw,cy,px,py+ph/2,'rgba(42,122,80,0.3)',1);
+  ctx.restore();
+
+  // Result
+  const match=Math.sin(t*0.05)>-0.3;
+  const resx=420,resy=cy+30;
+  ctx.save();
+  ctx.fillStyle=match?'rgba(42,122,80,0.15)':'rgba(192,72,32,0.15)';
+  ctx.strokeStyle=match?'rgba(42,122,80,0.6)':'rgba(192,72,32,0.6)';
+  ctx.lineWidth=1.5;
+  ctx.fillRect(resx,resy,80,36);ctx.strokeRect(resx,resy,80,36);
+  label(ctx,resx+40,resy+14,match?'MATCH':'RE-SCAN',match?GREEN:RUST,8);
+  label(ctx,resx+40,resy+27,match?'GRANTED':'ADJUST P',DIM,7);
+  ctx.restore();
+
+  // Labels
+  label(ctx,60,cy-55,'Light from',DIM,8);
+  label(ctx,60,cy-43,'token',DIM,8);
+  label(ctx,lx,cy+58,'Variable',DIM,8);
+  label(ctx,lx,cy+70,'Lens',DIM,8);
+}
+
+/* ═══════════════════════════════════
+   FULL SYSTEM DIAGRAM
+═══════════════════════════════════ */
+function drawFull(t){
+  const cv=document.getElementById('cFull'),ctx=cv.getContext('2d');
+  const W=1040,H=280,cy=H/2;
+  ctx.fillStyle='#151310';ctx.fillRect(0,0,W,H);
+  for(let x=0;x<W;x+=30){solidLine(ctx,x,0,x,H,DIMMER,.5);}
+  for(let y=0;y<H;y+=30){solidLine(ctx,0,y,W,y,DIMMER,.5);}
+
+  // Axis
+  dashedLine(ctx,0,cy,W,cy,'rgba(240,232,216,0.1)',1,[12,7]);
+
+  const tokenX=80, lensX=400, retX=650, cpuX=760, dbX=920;
+
+  // ── TOKEN ──
+  solidLine(ctx,tokenX,cy,tokenX,cy-70,RUST,2.5);
+  arrow(ctx,tokenX,cy+1,tokenX,cy-71,9,RUST);
+  solidLine(ctx,tokenX-8,cy,tokenX+8,cy,RUST,2);
+  // Token pattern (little QR-like grid)
+  ctx.save();
+  const ts=26,tgx=tokenX-ts/2,tgy=cy-70-ts-4;
+  ctx.strokeStyle=RUST+'55';ctx.lineWidth=.5;
+  for(let i=0;i<=4;i++){
+    ctx.beginPath();ctx.moveTo(tgx+i*(ts/4),tgy);ctx.lineTo(tgx+i*(ts/4),tgy+ts);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(tgx,tgy+i*(ts/4));ctx.lineTo(tgx+ts,tgy+i*(ts/4));ctx.stroke();
+  }
+  // fill some cells
+  [[0,0],[1,2],[2,1],[3,3],[0,3],[2,2]].forEach(([r,c])=>{
+    ctx.fillStyle=RUST+'66';ctx.fillRect(tgx+c*(ts/4)+1,tgy+r*(ts/4)+1,ts/4-2,ts/4-2);
+  });
+  ctx.restore();
+  label(ctx,tokenX,cy+20,'SECURITY TOKEN',RUST+'bb',8);
+  label(ctx,tokenX,cy+32,'OA = −25 cm',DIM,8);
+
+  // ── DIVERGING RAYS (token → lens) ──
+  ctx.save();
+  const numR=7;
+  for(let i=0;i<numR;i++){
+    const spread=.35,baseAng=Math.atan2(0,lensX-tokenX);
+    const ang=baseAng+(i/(numR-1)-.5)*spread;
+    const rayLen=Math.sqrt((lensX-tokenX)**2);
+    const phase=((t*1.3+i*20)%rayLen)/rayLen;
+    const px2=tokenX+Math.cos(ang)*rayLen*phase;
+    const py2=(cy-65)+Math.sin(ang)*rayLen*phase;
+    ctx.globalAlpha=0.08;
+    ctx.beginPath();ctx.moveTo(tokenX,cy-65);
+    ctx.lineTo(tokenX+Math.cos(ang)*rayLen,cy-65+Math.sin(ang)*rayLen);
+    ctx.strokeStyle=AMBER;ctx.lineWidth=1;ctx.stroke();
+    ctx.globalAlpha=0.85;
+    ctx.beginPath();ctx.arc(px2,py2,2,0,Math.PI*2);
+    ctx.fillStyle=AMBER2;ctx.fill();
+  }
+  ctx.globalAlpha=1;ctx.restore();
+
+  // ── LENS ──
+  const acc=0.6;
+  const lRy=52+acc*20,lRx=9+acc*9;
+  ctx.save();
+  const lg=ctx.createRadialGradient(lensX,cy,0,lensX,cy,lRy+15);
+  lg.addColorStop(0,`rgba(120,180,255,0.1)`);lg.addColorStop(1,'rgba(120,180,255,0)');
+  ctx.beginPath();ctx.arc(lensX,cy,lRy+15,0,Math.PI*2);ctx.fillStyle=lg;ctx.fill();
+  ctx.beginPath();ctx.ellipse(lensX,cy,lRx,lRy,0,0,Math.PI*2);
+  ctx.fillStyle='rgba(120,180,255,0.06)';ctx.fill();
+  ctx.strokeStyle='rgba(160,210,255,0.65)';ctx.lineWidth=2;
+  ctx.shadowColor='rgba(160,210,255,0.3)';ctx.shadowBlur=10;ctx.stroke();ctx.restore();
+  label(ctx,lensX,cy+lRy+16,'VARIABLE LENS',DIM,8);
+  label(ctx,lensX,cy+lRy+28,'P = 70.67 δ',AMBER+'cc',8);
+  label(ctx,lensX,cy-lRy-18,"H   H'",DIM,8);
+  ctx.beginPath();ctx.arc(lensX,cy,3,0,Math.PI*2);
+  ctx.fillStyle='rgba(255,255,255,0.7)';ctx.fill();
+  label(ctx,lensX-12,cy+4,'O',DIM,9,'right');
+
+  // ── CONVERGING RAYS (lens → retina) ──
+  ctx.save();ctx.setLineDash([6,4]);ctx.lineDashOffset=-t*1.1;
+  const imgY=cy+28;
+  // 3 principal rays
+  solidLine(ctx,lensX,cy-65,retX,imgY,AMBER2+'cc',1.5);
+  solidLine(ctx,lensX,cy,retX,imgY,GREEN+'cc',1.5);
+  solidLine(ctx,lensX,cy-20,retX,imgY,RUST+'99',1.3);
+  ctx.restore();
+
+  // ── RETINA ──
+  ctx.save();
+  const rg=ctx.createLinearGradient(retX,cy-80,retX,cy+80);
+  rg.addColorStop(0,'rgba(42,122,80,0)');rg.addColorStop(.5,'rgba(42,122,80,0.85)');rg.addColorStop(1,'rgba(42,122,80,0)');
+  ctx.beginPath();ctx.moveTo(retX,cy-80);ctx.lineTo(retX,cy+80);
+  ctx.strokeStyle=rg;ctx.lineWidth=3;ctx.shadowColor='rgba(42,122,80,0.3)';ctx.shadowBlur=8;ctx.stroke();ctx.restore();
+  label(ctx,retX,cy+96,"A′ RETINA",'rgba(42,122,80,0.7)',8);
+  label(ctx,retX,cy+108,"OA′ = +15 mm",'rgba(42,122,80,0.5)',8);
+  // image point
+  const pls=0.5+Math.sin(t*.08)*.5;
+  ctx.beginPath();ctx.arc(retX,imgY,5+pls*2,0,Math.PI*2);ctx.strokeStyle=`rgba(42,122,80,${.3*pls})`;ctx.lineWidth=1.5;ctx.stroke();
+  ctx.beginPath();ctx.arc(retX,imgY,4,0,Math.PI*2);ctx.fillStyle='rgba(42,122,80,.9)';ctx.shadowColor='rgba(42,122,80,.5)';ctx.shadowBlur=10;ctx.fill();ctx.shadowBlur=0;
+
+  // ── SIGNAL LINE ──
+  ctx.save();ctx.setLineDash([5,4]);ctx.lineDashOffset=-t*0.7;
+  solidLine(ctx,retX+3,cy,cpuX,cy,'rgba(240,200,100,0.4)',1.5);
+  ctx.restore();
+  const dot2x=retX+3+((t*0.7)%(cpuX-retX-3));
+  ctx.beginPath();ctx.arc(dot2x,cy,3,0,Math.PI*2);ctx.fillStyle=AMBER2;ctx.globalAlpha=0.8;ctx.fill();ctx.globalAlpha=1;
+
+  // ── CPU BOX ──
+  ctx.save();
+  ctx.fillStyle='rgba(20,17,13,0.9)';ctx.strokeStyle='rgba(60,50,40,0.7)';ctx.lineWidth=1.5;
+  ctx.fillRect(cpuX-28,cy-32,56,64);ctx.strokeRect(cpuX-28,cy-32,56,64);
+  label(ctx,cpuX,cy-10,'CPU','rgba(240,200,100,0.7)',9);
+  label(ctx,cpuX,cy+6,'PROCESS',DIM,7);
+  // blinking LED
+  ctx.beginPath();ctx.arc(cpuX+18,cy-22,3,0,Math.PI*2);
+  ctx.fillStyle=Math.sin(t*.15)>0?'rgba(42,122,80,0.9)':'rgba(30,60,40,0.4)';ctx.fill();
+  ctx.restore();
+
+  // ── DB LINE ──
+  ctx.save();ctx.setLineDash([5,4]);ctx.lineDashOffset=-t*0.6;
+  solidLine(ctx,cpuX+28,cy,dbX-22,cy,'rgba(160,160,160,0.3)',1.5);
+  ctx.restore();
+
+  // ── DATABASE ──
+  ctx.save();
+  const dbCy=cy;
+  // cylinder top
+  ctx.beginPath();ctx.ellipse(dbX,dbCy-20,22,7,0,0,Math.PI*2);
+  ctx.fillStyle='rgba(30,24,18,0.9)';ctx.strokeStyle='rgba(80,70,55,0.6)';ctx.lineWidth=1.2;ctx.fill();ctx.stroke();
+  // cylinder body
+  ctx.fillRect(dbX-22,dbCy-20,44,40);
+  ctx.strokeRect(dbX-22,dbCy-20,44,40);
+  // cylinder bottom
+  ctx.beginPath();ctx.ellipse(dbX,dbCy+20,22,7,0,0,Math.PI*2);
+  ctx.fillStyle='rgba(30,24,18,0.9)';ctx.fill();ctx.stroke();
+  // stripe
+  ctx.beginPath();ctx.ellipse(dbX,dbCy,22,7,0,0,Math.PI*2);
+  ctx.strokeStyle='rgba(80,70,55,0.4)';ctx.stroke();
+  label(ctx,dbX,dbCy+38,'DATABASE','rgba(160,140,100,0.5)',8);
+  ctx.restore();
+
+  // ── RESULT ──
+  const match=Math.sin(t*0.04)>0;
+  ctx.save();
+  ctx.fillStyle=match?'rgba(42,122,80,0.12)':'rgba(192,72,32,0.12)';
+  ctx.strokeStyle=match?'rgba(42,122,80,0.5)':'rgba(192,72,32,0.5)';ctx.lineWidth=1.5;
+  ctx.fillRect(dbX-30,cy+52,60,28);ctx.strokeRect(dbX-30,cy+52,60,28);
+  label(ctx,dbX,cy+64,match?'MATCH':'REJECT',match?GREEN:RUST,9);
+  label(ctx,dbX,cy+76,match?'ACCESS OK':'RE-SCAN',DIM,7);
+  ctx.restore();
+
+  // ── DIMENSION ARROWS ──
+  ctx.save();ctx.setLineDash([3,3]);
+  solidLine(ctx,tokenX,cy+140,lensX,cy+140,'rgba(192,72,32,0.25)',1);
+  solidLine(ctx,lensX,cy+155,retX,cy+155,'rgba(42,122,80,0.25)',1);
+  ctx.restore();
+  label(ctx,(tokenX+lensX)/2,cy+132,'|OA| = 25 cm',RUST+'77',8);
+  label(ctx,(lensX+retX)/2,cy+148,"OA′ = 15 mm",'rgba(42,122,80,0.5)',8);
+
+  // ── LEGEND top-right ──
+  const lx2=W-200, ly2=12;
+  [[AMBER2,'Ray 1 — parallel → F′'],[GREEN,'Ray 2 — through O'],[RUST,'Ray 3 — through F']].forEach(([c,lb],i)=>{
+    solidLine(ctx,lx2,ly2+i*16+5,lx2+18,ly2+i*16+5,c,1.5);
+    label(ctx,lx2+24,ly2+i*16+9,lb,'rgba(240,232,216,0.4)',8,'left');
+  });
+}
+
+tick();
+</script>
+</body>
+</html>

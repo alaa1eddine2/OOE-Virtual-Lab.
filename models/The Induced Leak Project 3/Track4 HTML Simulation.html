@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Induced Leak — Faraday Crosstalk Simulation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&family=Oxanium:wght@300;400;600;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0b;
+  --bg2:#111114;
+  --card:#13131a;
+  --card2:#1a1a24;
+  --border:#2a2a3a;
+  --border2:#ff6b00;
+  --text:#e8e4f0;
+  --muted:#8a85a0;
+  --orange:#ff6b00;
+  --orange2:#ff8c00;
+  --orange-dim:rgba(255,107,0,0.15);
+  --purple:#9b5de5;
+  --purple2:#b47aff;
+  --purple-dim:rgba(155,93,229,0.15);
+  --red:#ff3d3d;
+  --green:#00e5a0;
+  --mono:'Share Tech Mono',monospace;
+  --sans:'Rajdhani',sans-serif;
+  --display:'Oxanium',sans-serif;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);padding:0;line-height:1.5;min-height:100vh;overflow-x:hidden}
+body::before{
+  content:'';position:fixed;top:0;left:0;right:0;bottom:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);
+  pointer-events:none;z-index:0
+}
+.wrap{max-width:900px;margin:0 auto;padding:20px;position:relative;z-index:1}
+
+/* ── HEADER ── */
+.header{
+  border:1px solid var(--border);border-top:3px solid var(--orange);
+  background:var(--card);padding:24px 28px 20px;margin-bottom:16px;
+  position:relative;overflow:hidden;
+}
+.header::after{
+  content:'';position:absolute;top:0;right:0;width:200px;height:200px;
+  background:radial-gradient(circle at 100% 0%, rgba(155,93,229,0.08) 0%, transparent 70%);
+  pointer-events:none;
+}
+.header-meta{
+  font-family:var(--mono);font-size:10px;letter-spacing:.12em;
+  color:var(--orange);text-transform:uppercase;margin-bottom:10px;
+  display:flex;gap:16px;flex-wrap:wrap;align-items:center;
+}
+.header-meta span{opacity:.7}
+.header-meta .sep{color:var(--border);user-select:none}
+.header-title{
+  font-family:var(--display);font-size:28px;font-weight:800;
+  letter-spacing:.04em;line-height:1.1;margin-bottom:6px;
+  background:linear-gradient(90deg,var(--orange),var(--purple2));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.header-subtitle{font-size:14px;color:var(--muted);font-weight:400;margin-bottom:16px}
+.formula-strip{display:flex;gap:0;flex-wrap:wrap;border:1px solid var(--border);border-radius:4px;overflow:hidden}
+.formula-item{flex:1;min-width:180px;padding:10px 14px;background:var(--bg2);border-right:1px solid var(--border)}
+.formula-item:last-child{border-right:none}
+.feq{font-family:var(--mono);font-size:15px;color:var(--orange);font-weight:700;display:block;margin-bottom:2px}
+.fnote{font-size:11px;color:var(--muted)}
+
+/* ── TABS ── */
+.tab-row{display:flex;gap:0;margin-bottom:16px;border:1px solid var(--border);border-radius:4px;overflow:hidden}
+.tab{
+  flex:1;font-size:12px;font-family:var(--mono);letter-spacing:.06em;
+  padding:9px 10px;border:none;background:var(--card);color:var(--muted);
+  cursor:pointer;text-transform:uppercase;transition:all .2s;border-right:1px solid var(--border);
+}
+.tab:last-child{border-right:none}
+.tab:hover{background:var(--card2);color:var(--text)}
+.tab.active{background:var(--orange-dim);color:var(--orange);border-bottom:2px solid var(--orange)}
+.panel{display:none}.panel.active{display:block}
+
+/* ── GRID ── */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+@media(max-width:620px){.grid2{grid-template-columns:1fr}}
+
+/* ── CARDS ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:16px 18px}
+.card-title{
+  font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--orange);margin-bottom:12px;
+  display:flex;align-items:center;gap:8px;
+}
+.card-title::before{content:'▸';opacity:.6}
+
+/* ── CONTROLS ── */
+.ctrl{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.ctrl label{font-size:12px;color:var(--muted);min-width:130px;font-family:var(--sans);font-weight:500}
+.ctrl input[type=range]{flex:1;accent-color:var(--orange);height:4px;cursor:pointer}
+.ctrl .val{font-family:var(--mono);font-size:11px;color:var(--orange2);min-width:56px;text-align:right}
+
+/* ── METRICS ── */
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
+.met{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:12px 14px;position:relative;overflow:hidden}
+.met::before{content:'';position:absolute;bottom:0;left:0;right:0;height:2px}
+.met.m-orange::before{background:var(--orange)}
+.met.m-purple::before{background:var(--purple)}
+.met.m-green::before{background:var(--green)}
+.met .mlabel{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px;font-family:var(--mono)}
+.met .mval{font-family:var(--mono);font-size:22px;font-weight:700}
+.met .mval.orange{color:var(--orange)}
+.met .mval.purple{color:var(--purple2)}
+.met .mval.green{color:var(--green)}
+
+/* ── STATUS ── */
+.status-bar{
+  background:var(--card);border:1px solid var(--border);border-radius:4px;
+  padding:10px 16px;margin-bottom:12px;font-size:12px;font-family:var(--mono);
+  display:flex;align-items:center;gap:10px;letter-spacing:.03em;
+}
+.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;box-shadow:0 0 6px currentColor}
+.status-dot.ok{background:var(--green);color:var(--green)}
+.status-dot.warn{background:var(--orange);color:var(--orange)}
+.status-dot.danger{background:var(--red);color:var(--red)}
+
+/* ─── LIVE SIM REDESIGN ─── */
+.sim-layout{display:grid;grid-template-columns:280px 1fr;gap:0;border:1px solid var(--border);border-radius:6px;overflow:hidden;margin-bottom:12px}
+@media(max-width:700px){.sim-layout{grid-template-columns:1fr}}
+
+.sim-controls{background:var(--card);border-right:1px solid var(--border);padding:18px 16px}
+.sim-controls-title{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--orange);margin-bottom:16px;opacity:.8}
+
+.param-row{margin-bottom:14px}
+.param-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.param-label span:first-child{font-size:11px;color:var(--muted);font-family:var(--sans);font-weight:500}
+.param-label .pval{font-family:var(--mono);font-size:11px;color:var(--orange2);font-weight:700}
+.param-row input[type=range]{
+  width:100%;accent-color:var(--orange);height:3px;cursor:pointer;
+  background:linear-gradient(to right, var(--orange) 0%, var(--orange) var(--pct,50%), var(--border) var(--pct,50%), var(--border) 100%);
+  border-radius:2px;appearance:none;-webkit-appearance:none;outline:none;border:none;
+}
+.param-row input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+  background:var(--orange);border:2px solid var(--bg);cursor:pointer;
+  box-shadow:0 0 6px rgba(255,107,0,.5);
+}
+.param-divider{height:1px;background:var(--border);margin:14px 0;opacity:.5}
+
+.sim-visuals{background:var(--bg2);padding:16px;display:flex;flex-direction:column;gap:10px}
+.sig-block{background:var(--card);border:1px solid var(--border);border-radius:4px;overflow:hidden}
+.sig-label{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border)}
+.sig-label-text{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.sig-label-eq{font-family:var(--mono);font-size:10px;color:var(--orange);opacity:.8}
+canvas{display:block;width:100%}
+.cross-block{background:var(--card);border:1px solid var(--border);border-radius:4px;overflow:hidden}
+.cross-label{padding:8px 12px;border-bottom:1px solid var(--border);font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+.bits-row-compact{display:flex;gap:0;border:1px solid var(--border);border-radius:3px;overflow:hidden;margin-top:10px}
+.bit-c{
+  flex:1;height:22px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:10px;font-weight:700;
+  cursor:pointer;transition:background .1s;border-right:1px solid var(--border);
+}
+.bit-c:last-child{border-right:none}
+.bit-c.hi{background:var(--orange-dim);color:var(--orange)}
+.bit-c.lo{background:var(--bg2);color:var(--muted)}
+.bits-hint{font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:5px;opacity:.6}
+
+/* ── PHYSICS — CLEAN REDESIGN ── */
+.phys-section{margin-bottom:20px}
+.phys-section-title{
+  font-size:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.14em;
+  color:var(--purple2);margin-bottom:12px;padding-bottom:8px;
+  border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;
+}
+.phys-section-title::before{content:'';width:3px;height:12px;background:var(--purple);border-radius:1px;flex-shrink:0}
+
+/* Maxwell 4-grid — cleaner */
+.mxw-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:0}
+@media(max-width:620px){.mxw-grid{grid-template-columns:1fr}}
+.mxw-card{
+  background:var(--card);border:1px solid var(--border);border-radius:4px;
+  padding:14px 16px;position:relative;
+}
+.mxw-card.core{border-color:rgba(255,107,0,.4);background:rgba(255,107,0,.04)}
+.mxw-num{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.mxw-formula{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--purple2);margin-bottom:6px;letter-spacing:.02em}
+.mxw-card.core .mxw-formula{color:var(--orange)}
+.mxw-desc{font-size:11px;color:var(--muted);line-height:1.5}
+.core-badge{display:inline-block;font-family:var(--mono);font-size:8px;letter-spacing:.1em;text-transform:uppercase;padding:2px 6px;border-radius:2px;background:var(--orange-dim);color:var(--orange);border:1px solid rgba(255,107,0,.3);margin-left:6px;vertical-align:middle}
+
+/* Attack chain — horizontal flow */
+.chain{display:flex;flex-direction:column;gap:0;margin-bottom:0}
+.chain-step{display:flex;align-items:stretch;gap:0}
+.chain-num{
+  width:28px;flex-shrink:0;display:flex;align-items:flex-start;justify-content:center;
+  padding-top:14px;font-family:var(--mono);font-size:10px;color:var(--orange);font-weight:700;
+}
+.chain-line{display:flex;flex-direction:column;align-items:center;width:16px;flex-shrink:0}
+.chain-dot{width:8px;height:8px;border-radius:50%;background:var(--orange);margin-top:14px;flex-shrink:0;box-shadow:0 0 6px var(--orange)}
+.chain-bar{width:1px;background:var(--border);flex:1;margin-top:4px}
+.chain-step:last-child .chain-bar{display:none}
+.chain-body{flex:1;padding:10px 0 14px 10px}
+.chain-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;font-family:var(--sans)}
+.chain-sub{font-family:var(--mono);font-size:11px;color:var(--orange2);margin-bottom:3px}
+.chain-desc{font-size:11px;color:var(--muted);line-height:1.5}
+.chain-law{font-size:10px;color:var(--muted);font-style:italic;margin-top:2px;font-family:var(--mono);opacity:.6}
+
+/* Equation cards — stripped down */
+.eq-set{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:620px){.eq-set{grid-template-columns:1fr}}
+.eq-card{background:var(--card);border:1px solid var(--border);border-radius:4px;padding:14px 16px}
+.eq-card-label{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.eq-formula-big{font-family:var(--mono);font-size:14px;color:var(--orange2);background:var(--bg2);padding:8px 12px;border-radius:3px;border-left:2px solid var(--orange);margin-bottom:8px;letter-spacing:.02em}
+.eq-note{font-size:11px;color:var(--muted);line-height:1.5}
+.eq-note em{color:var(--orange2);font-style:normal}
+
+/* Equation reference table */
+.ref-table{width:100%;border-collapse:collapse;font-size:11px}
+.ref-table th{background:var(--bg2);color:var(--orange);font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:7px 10px;border:1px solid var(--border);text-align:left}
+.ref-table td{padding:6px 10px;border:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--text);vertical-align:top}
+.ref-table tr:nth-child(even) td{background:var(--bg2)}
+.ref-table .rcol{color:var(--orange2)}
+.ref-table .rmuted{color:var(--muted)}
+
+/* Misc */
+.section-hdr{
+  font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--purple2);margin-bottom:12px;margin-top:4px;display:flex;align-items:center;gap:8px;
+}
+.section-hdr::after{content:'';flex:1;height:1px;background:var(--border)}
+.glow-orange{text-shadow:0 0 20px rgba(255,107,0,.4)}
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--orange)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-meta">
+      <span>ENSTA Algiers — MI2</span>
+      <span class="sep">|</span>
+      <span>Dr. Cheggou Rabéa</span>
+      <span class="sep">|</span>
+      <span>Track 04 · Workshop 03</span>
+      <span class="sep">|</span>
+      <span>AY 2025–2026</span>
+    </div>
+    <div class="header-title glow-orange">The Induced Leak</div>
+    <div class="header-subtitle">Electromagnetic Side-Channel Attack Through Inductive Coupling — Interactive Simulation</div>
+    <div class="formula-strip">
+      <div class="formula-item">
+        <span class="feq">e = −dΦ/dt</span>
+        <span class="fnote">Faraday's Law — core attack equation</span>
+      </div>
+      <div class="formula-item">
+        <span class="feq">e = −M · dI/dt</span>
+        <span class="fnote">Mutual inductance coupling model</span>
+      </div>
+      <div class="formula-item">
+        <span class="feq">M = (μ₀·l/2π)·ln((d+a)/d)</span>
+        <span class="fnote">Parallel cable mutual inductance</span>
+      </div>
+      <div class="formula-item">
+        <span class="feq">SNR = M²·(dI/dt)² / N₀·Bw</span>
+        <span class="fnote">Signal-to-Noise Ratio metric</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS — only 2 remain -->
+  <div class="tab-row">
+    <button class="tab active" onclick="switchTab('sim')">⚡ Live Simulation</button>
+    <button class="tab" onclick="switchTab('physics')">∇ Physics &amp; Math</button>
+  </div>
+
+  <!-- ══════════════════════ SIM PANEL ══════════════════════ -->
+  <div class="panel active" id="tab-sim">
+
+    <div class="sim-layout">
+      <!-- LEFT: controls -->
+      <div class="sim-controls">
+        <div class="sim-controls-title">Parameters</div>
+
+        <div class="param-row">
+          <div class="param-label"><span>Signal Frequency</span><span class="pval" id="freqv">20 kHz</span></div>
+          <input type="range" id="freq" min="1" max="100" value="20" step="1" oninput="update()">
+        </div>
+        <div class="param-row">
+          <div class="param-label"><span>Separation d</span><span class="pval" id="distv">5 mm</span></div>
+          <input type="range" id="dist" min="1" max="30" value="5" step="1" oninput="update()">
+        </div>
+        <div class="param-row">
+          <div class="param-label"><span>Mutual Inductance M</span><span class="pval" id="mutualv">12 μH</span></div>
+          <input type="range" id="mutual" min="1" max="50" value="12" step="1" oninput="update()">
+        </div>
+        <div class="param-row">
+          <div class="param-label"><span>Signal Amplitude</span><span class="pval" id="ampv">5.0 V</span></div>
+          <input type="range" id="amp" min="1" max="10" value="5" step="0.5" oninput="update()">
+        </div>
+        <div class="param-divider"></div>
+        <div class="param-row">
+          <div class="param-label"><span>Noise σ</span><span class="pval" id="noisev">15 mV</span></div>
+          <input type="range" id="noise" min="0" max="100" value="15" step="5" oninput="update()">
+        </div>
+        <div class="param-row">
+          <div class="param-label"><span>Shielding</span><span class="pval" id="shieldv">0 dB</span></div>
+          <input type="range" id="shield" min="0" max="60" value="0" step="5" oninput="update()">
+        </div>
+        <div class="param-divider"></div>
+        <div class="param-row">
+          <div class="param-label"><span>Bit Count</span><span class="pval" id="nbitsv">8</span></div>
+          <input type="range" id="nbits" min="4" max="16" value="8" step="1" oninput="buildBits();update()">
+        </div>
+        <div class="param-row">
+          <div class="param-label"><span>Bit Rate</span><span class="pval" id="bratev">10 kbps</span></div>
+          <input type="range" id="brate" min="1" max="50" value="10" step="1" oninput="update()">
+        </div>
+
+        <div style="margin-top:4px">
+          <div class="bits-hint">↓ Click bits to toggle</div>
+          <div class="bits-row-compact" id="bitrow"></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: signals -->
+      <div class="sim-visuals">
+        <div class="metrics" style="margin-bottom:0">
+          <div class="met m-orange"><div class="mlabel">Peak EMF</div><div class="mval orange" id="m-emf">—</div></div>
+          <div class="met m-purple"><div class="mlabel">Coupling</div><div class="mval purple" id="m-coup">—</div></div>
+          <div class="met m-green"><div class="mlabel">SNR</div><div class="mval green" id="m-snr">—</div></div>
+        </div>
+
+        <div class="status-bar" id="status-bar" style="margin-bottom:0">
+          <div class="status-dot ok" id="status-dot"></div>
+          <span id="status-text">Initializing…</span>
+        </div>
+
+        <div class="sig-block">
+          <div class="sig-label">
+            <span class="sig-label-text">Victim Cable — Digital Signal I(t)</span>
+            <span class="sig-label-eq" style="color:var(--purple2)">I(t)</span>
+          </div>
+          <canvas id="c1" height="80"></canvas>
+        </div>
+
+        <div class="sig-block">
+          <div class="sig-label">
+            <span class="sig-label-text">Spy Cable — Induced EMF</span>
+            <span class="sig-label-eq">e = −M · dI/dt</span>
+          </div>
+          <canvas id="c2" height="80"></canvas>
+        </div>
+
+        <div class="cross-block">
+          <div class="cross-label">Cross-Section — Cable Geometry &amp; Magnetic Field</div>
+          <canvas id="c3" height="150"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════ PHYSICS PANEL ══════════════════════ -->
+  <div class="panel" id="tab-physics">
+
+    <!-- Maxwell's Equations -->
+    <div class="phys-section">
+      <div class="phys-section-title">Maxwell's Equations</div>
+      <div class="mxw-grid">
+        <div class="mxw-card">
+          <div class="mxw-num">Eq. 1 — Gauss (Electric)</div>
+          <div class="mxw-formula">∇ · E⃗ = 0</div>
+          <div class="mxw-desc">No free charges in the medium (ρ = 0)</div>
+        </div>
+        <div class="mxw-card">
+          <div class="mxw-num">Eq. 2 — Gauss (Magnetic)</div>
+          <div class="mxw-formula">∇ · B⃗ = 0</div>
+          <div class="mxw-desc">No magnetic monopoles exist in nature</div>
+        </div>
+        <div class="mxw-card core">
+          <div class="mxw-num">Eq. 3 — Faraday's Law <span class="core-badge">Attack Core</span></div>
+          <div class="mxw-formula">∇ × E⃗ = −∂B⃗/∂t</div>
+          <div class="mxw-desc">A changing magnetic field induces an electric field — this is the physical mechanism of the attack</div>
+        </div>
+        <div class="mxw-card">
+          <div class="mxw-num">Eq. 4 — Ampère-Maxwell</div>
+          <div class="mxw-formula">∇ × B⃗ = μ₀j⃗ + μ₀ε₀∂E⃗/∂t</div>
+          <div class="mxw-desc">Current in victim cable generates magnetic field B⃗</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Attack Chain -->
+    <div class="phys-section">
+      <div class="phys-section-title">How the Attack Works</div>
+      <div class="card" style="padding:16px 20px">
+        <div class="chain">
+          <div class="chain-step">
+            <div class="chain-line"><div class="chain-dot"></div><div class="chain-bar"></div></div>
+            <div class="chain-body">
+              <div class="chain-title">Current flows through victim cable</div>
+              <div class="chain-sub">j⃗(t) — digital data as time-varying current</div>
+              <div class="chain-law">→ Ampère-Maxwell Law</div>
+            </div>
+          </div>
+          <div class="chain-step">
+            <div class="chain-line"><div class="chain-dot"></div><div class="chain-bar"></div></div>
+            <div class="chain-body">
+              <div class="chain-title">Magnetic field radiates outward</div>
+              <div class="chain-sub">B(r) = μ₀ · I / (2πr)&nbsp;&nbsp;— decays as 1/r</div>
+              <div class="chain-law">→ Varying B follows data transitions</div>
+            </div>
+          </div>
+          <div class="chain-step">
+            <div class="chain-line"><div class="chain-dot"></div><div class="chain-bar"></div></div>
+            <div class="chain-body">
+              <div class="chain-title">Magnetic flux links the spy cable</div>
+              <div class="chain-sub">Φ = ∫B⃗ · dS⃗ = B · A · cos(θ)</div>
+              <div class="chain-law">→ Faraday's Law</div>
+            </div>
+          </div>
+          <div class="chain-step">
+            <div class="chain-line"><div class="chain-dot" style="background:var(--green);box-shadow:0 0 6px var(--green)"></div></div>
+            <div class="chain-body">
+              <div class="chain-title">Voltage is induced — data is leaked</div>
+              <div class="chain-sub" style="color:var(--green)">e(t) = −M · dI/dt</div>
+              <div class="chain-desc">Each bit transition (0→1 or 1→0) creates a detectable EMF pulse. The attacker reads bit transitions without any physical contact.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Key Equations -->
+    <div class="phys-section">
+      <div class="phys-section-title">Key Equations</div>
+      <div class="eq-set">
+        <div class="eq-card">
+          <div class="eq-card-label">Mutual Inductance</div>
+          <div class="eq-formula-big">M = (μ₀·l / 2π) · ln((d+a) / d)</div>
+          <div class="eq-note"><em>l</em> = cable length &nbsp;·&nbsp; <em>d</em> = separation &nbsp;·&nbsp; <em>a</em> = loop radius. Halving d can double or triple M.</div>
+        </div>
+        <div class="eq-card">
+          <div class="eq-card-label">Induced Attack Signal</div>
+          <div class="eq-formula-big">e(t) = −M · Σ aₙ · p'(t − nTb)</div>
+          <div class="eq-note"><em>aₙ ∈ {0,1}</em> = data bits &nbsp;·&nbsp; <em>Tb</em> = bit period &nbsp;·&nbsp; <em>p'(t)</em> = pulse derivative.</div>
+        </div>
+        <div class="eq-card">
+          <div class="eq-card-label">Distance Decay</div>
+          <div class="eq-formula-big">e(r) ∝ (1/r) · dI/dt</div>
+          <div class="eq-note">EMF falls as 1/r from cable axis — limits effective attack range but does not eliminate it.</div>
+        </div>
+        <div class="eq-card">
+          <div class="eq-card-label">Shielding Attenuation</div>
+          <div class="eq-formula-big">e_s = e_u · 10^(−S/20)</div>
+          <div class="eq-note"><em>S</em> = shielding effectiveness in dB. Adjust the Shielding slider in simulation to see the effect.</div>
+        </div>
+        <div class="eq-card">
+          <div class="eq-card-label">Frequency Domain — Fourier</div>
+          <div class="eq-formula-big">E(f) = −j · 2πf · M · I(f)</div>
+          <div class="eq-note">Higher frequency = stronger induced signal. This is why 10 Gbps cables are more vulnerable than slower ones.</div>
+        </div>
+        <div class="eq-card">
+          <div class="eq-card-label">Signal-to-Noise Ratio</div>
+          <div class="eq-formula-big">SNR = M² · (dI/dt)² / N₀ · Bw</div>
+          <div class="eq-note">Attack feasibility depends on SNR exceeding the detection threshold above background noise floor.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Full equation reference table -->
+    <div class="phys-section">
+      <div class="phys-section-title">Equation Reference</div>
+      <table class="ref-table">
+        <thead><tr><th>Eq</th><th>Formula</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td class="rcol">1–4</td><td>Maxwell's 4 Equations</td><td class="rmuted">Electromagnetism foundation</td></tr>
+          <tr><td class="rcol">5</td><td>Φ = ∫B⃗·dS⃗ = B·A·cos(θ)</td><td class="rmuted">Magnetic flux through loop</td></tr>
+          <tr><td class="rcol">6</td><td>e = −M · dI/dt</td><td class="rmuted">Mutual inductance coupling</td></tr>
+          <tr><td class="rcol">7</td><td>M = (μ₀l/2π)·ln((d+a)/d)</td><td class="rmuted">Mutual inductance value</td></tr>
+          <tr><td class="rcol">8</td><td>e(t) = −M·Σaₙ·p'(t−nTb)</td><td class="rmuted">Full induced attack signal</td></tr>
+          <tr><td class="rcol">9</td><td>B(r) = μ₀I/(2πr)</td><td class="rmuted">Magnetic field vs. distance</td></tr>
+          <tr><td class="rcol">10</td><td>e(r) ∝ (1/r)·dI/dt</td><td class="rmuted">Distance-dependent EMF</td></tr>
+          <tr><td class="rcol">11</td><td>SNR = M²·(dI/dt)² / N₀·Bw</td><td class="rmuted">Signal-to-Noise Ratio</td></tr>
+          <tr><td class="rcol">12</td><td>e_s = e_u · 10^(−S/20)</td><td class="rmuted">Electromagnetic shielding</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+</div><!-- /wrap -->
+
+<script>
+const bits = [];
+
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const tabBtns = document.querySelectorAll('.tab');
+  const ids = ['sim','physics'];
+  ids.forEach((tid,i) => { if(tid===id) tabBtns[i].classList.add('active'); });
+  document.getElementById('tab-'+id).classList.add('active');
+}
+
+function buildBits() {
+  const n = +document.getElementById('nbits').value;
+  document.getElementById('nbitsv').textContent = n;
+  while(bits.length < n) bits.push(Math.random()>.5?1:0);
+  while(bits.length > n) bits.pop();
+  const row = document.getElementById('bitrow');
+  row.innerHTML = '';
+  bits.forEach((b,i) => {
+    const d = document.createElement('div');
+    d.className = 'bit-c '+(b?'hi':'lo');
+    d.textContent = b;
+    d.onclick = () => { bits[i]=1-bits[i]; buildBitsDOM(); update(); };
+    row.appendChild(d);
+  });
+}
+function buildBitsDOM() {
+  document.getElementById('bitrow').querySelectorAll('.bit-c').forEach((el,i)=>{
+    el.className='bit-c '+(bits[i]?'hi':'lo');
+    el.textContent=bits[i];
+  });
+}
+
+function getParams() {
+  return {
+    freq: +document.getElementById('freq').value * 1e3,
+    dist: +document.getElementById('dist').value * 1e-3,
+    M: +document.getElementById('mutual').value * 1e-6,
+    amp: +document.getElementById('amp').value,
+    noise: +document.getElementById('noise').value * 1e-3,
+    brate: +document.getElementById('brate').value * 1e3,
+    shield: +document.getElementById('shield').value,
+  };
+}
+
+function gaussian() {
+  let u=0,v=0;
+  while(!u) u=Math.random();
+  while(!v) v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+
+function update() {
+  document.getElementById('freqv').textContent = document.getElementById('freq').value+' kHz';
+  document.getElementById('distv').textContent = document.getElementById('dist').value+' mm';
+  document.getElementById('mutualv').textContent = document.getElementById('mutual').value+' μH';
+  document.getElementById('ampv').textContent = (+document.getElementById('amp').value).toFixed(1)+' V';
+  document.getElementById('noisev').textContent = document.getElementById('noise').value+' mV';
+  document.getElementById('bratev').textContent = document.getElementById('brate').value+' kbps';
+  document.getElementById('shieldv').textContent = document.getElementById('shield').value+' dB';
+  document.getElementById('nbitsv').textContent = document.getElementById('nbits').value;
+  buildBitsDOM();
+
+  const p = getParams();
+  const shieldFactor = Math.pow(10, -p.shield/20);
+  const N = 600;
+  const totalT = bits.length / p.brate;
+  const dt = totalT / N;
+
+  const victim = [];
+  for(let i=0;i<N;i++) {
+    const t=i*dt;
+    const bidx=Math.floor(t*p.brate);
+    victim.push(bits[Math.min(bidx,bits.length-1)]*p.amp);
+  }
+
+  const emf = [];
+  const Rc = 50;
+  for(let i=0;i<N;i++) {
+    let di = i>0 ? (victim[i]-victim[i-1])/(dt*Rc) : 0;
+    const raw = -p.M * di * shieldFactor;
+    emf.push(raw + p.noise * gaussian());
+  }
+
+  const peakEMF = Math.max(...emf.map(Math.abs));
+  const coupling = (peakEMF / p.amp) * 100;
+  const snrVal = p.noise > 0 ? 20*Math.log10(peakEMF / p.noise) : Infinity;
+
+  document.getElementById('m-emf').textContent = (peakEMF*1000).toFixed(1)+' mV';
+  document.getElementById('m-coup').textContent = coupling.toFixed(2)+'%';
+  document.getElementById('m-snr').textContent = isFinite(snrVal)?snrVal.toFixed(1)+' dB':'∞';
+
+  const dot = document.getElementById('status-dot');
+  const txt = document.getElementById('status-text');
+  if(coupling > 2) {
+    dot.className='status-dot danger'; txt.textContent='⚠  HIGH COUPLING — bit stream extractable by attacker';
+  } else if(coupling > 0.5) {
+    dot.className='status-dot warn'; txt.textContent='⚡  MODERATE COUPLING — some bit leakage possible';
+  } else {
+    dot.className='status-dot ok'; txt.textContent='✓  LOW COUPLING — signal mostly secure at this separation';
+  }
+
+  drawSignal('c1', victim, p.amp, '#9b5de5', null);
+  drawSignal('c2', emf, peakEMF||0.001, '#ff6b00', peakEMF*0.3);
+  drawCrossSection('c3', p);
+
+  window._emf = emf;
+  window._victim = victim;
+  window._peakEMF = peakEMF;
+}
+
+function drawSignal(id, data, maxY, color, threshold) {
+  const c = document.getElementById(id);
+  const dpr = devicePixelRatio||1;
+  const w = c.width = c.offsetWidth * dpr || 700;
+  const h = c.height = 80 * dpr;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0,0,w,h);
+
+  ctx.fillStyle = '#0a0a0b';
+  ctx.fillRect(0,0,w,h);
+
+  // Grid
+  ctx.strokeStyle = 'rgba(42,42,58,0.8)'; ctx.lineWidth = 0.5*dpr;
+  for(let i=0;i<=4;i++){ctx.beginPath();ctx.moveTo(0,h/4*i);ctx.lineTo(w,h/4*i);ctx.stroke()}
+  for(let i=0;i<=8;i++){ctx.beginPath();ctx.moveTo(w/8*i,0);ctx.lineTo(w/8*i,h);ctx.stroke()}
+
+  // Zero line
+  ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=0.8*dpr;
+  ctx.beginPath();ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();
+
+  // Threshold
+  if(threshold!=null && threshold>0){
+    const ty = h/2 - (threshold/maxY)*(h/2-4);
+    ctx.strokeStyle='rgba(255,61,61,0.5)'; ctx.setLineDash([5*dpr,4*dpr]); ctx.lineWidth=1*dpr;
+    ctx.beginPath();ctx.moveTo(0,ty);ctx.lineTo(w,ty);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(0,h-ty);ctx.lineTo(w,h-ty);ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Fill
+  const grad = ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0, color+'33');
+  grad.addColorStop(1, color+'00');
+  ctx.beginPath();
+  data.forEach((v,i)=>{
+    const x=i/data.length*w;
+    const y=h/2-(v/maxY)*(h/2-4);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.lineTo(w,h/2); ctx.lineTo(0,h/2); ctx.closePath();
+  ctx.fillStyle=grad; ctx.fill();
+
+  // Line
+  ctx.strokeStyle=color; ctx.lineWidth=1.8*dpr; ctx.setLineDash([]);
+  ctx.beginPath();
+  data.forEach((v,i)=>{
+    const x=i/data.length*w;
+    const y=h/2-(v/maxY)*(h/2-4);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  });
+  ctx.shadowColor = color; ctx.shadowBlur = 4*dpr;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // Labels
+  ctx.fillStyle='rgba(138,133,160,0.7)';
+  ctx.font=`${10*dpr}px Share Tech Mono,monospace`;
+  ctx.textAlign='left';
+  ctx.fillText('+'+maxY.toFixed(2),3,13*dpr);
+  ctx.fillText('0',3,h/2+4*dpr);
+  ctx.fillText('-'+maxY.toFixed(2),3,h-2*dpr);
+}
+
+function drawCrossSection(id, p) {
+  const c = document.getElementById(id);
+  const dpr = devicePixelRatio||1;
+  const w = c.width = c.offsetWidth * dpr || 700;
+  const h = c.height = 150 * dpr;
+  const ctx = c.getContext('2d');
+  ctx.clearRect(0,0,w,h);
+
+  ctx.fillStyle = '#0a0a0b';
+  ctx.fillRect(0,0,w,h);
+
+  ctx.strokeStyle='rgba(42,42,58,0.5)'; ctx.lineWidth=0.5*dpr;
+  for(let i=0;i<h;i+=20*dpr){ctx.beginPath();ctx.moveTo(0,i);ctx.lineTo(w,i);ctx.stroke()}
+  for(let i=0;i<w;i+=20*dpr){ctx.beginPath();ctx.moveTo(i,0);ctx.lineTo(i,h);ctx.stroke()}
+
+  const sep = Math.min(p.dist * 1e3, 30);
+  const cx1 = w*0.28;
+  const cx2 = cx1 + (sep/30)*(w*0.38) + w*0.1;
+  const cy = h*0.5;
+  const r = 16*dpr;
+
+  // Field rings
+  for(let i=1;i<=6;i++) {
+    const fr = r + i*20*dpr;
+    const alpha = 0.2 - i*0.025;
+    if(alpha<=0) break;
+    ctx.beginPath();
+    ctx.arc(cx1,cy,fr,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(155,93,229,${alpha})`;
+    ctx.lineWidth=1.2*dpr;
+    ctx.stroke();
+    const ang = -Math.PI/3;
+    const ax=cx1+fr*Math.cos(ang), ay=cy+fr*Math.sin(ang);
+    ctx.save(); ctx.translate(ax,ay); ctx.rotate(ang+Math.PI/2);
+    ctx.beginPath(); ctx.moveTo(0,-5*dpr); ctx.lineTo(3*dpr,0); ctx.lineTo(-3*dpr,0); ctx.closePath();
+    ctx.fillStyle=`rgba(155,93,229,${alpha*2.5})`; ctx.fill();
+    ctx.restore();
+  }
+
+  // Coupling lines
+  const midx=(cx1+cx2)/2;
+  ctx.save(); ctx.setLineDash([5*dpr,4*dpr]);
+  ctx.strokeStyle='rgba(255,107,0,0.6)'; ctx.lineWidth=1.5*dpr;
+  ctx.beginPath(); ctx.moveTo(cx1+r,cy-22*dpr); ctx.quadraticCurveTo(midx,cy-48*dpr,cx2-r,cy-22*dpr); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(cx1+r,cy+22*dpr); ctx.quadraticCurveTo(midx,cy+48*dpr,cx2-r,cy+22*dpr); ctx.stroke();
+  ctx.restore();
+
+  // Victim
+  const gv=ctx.createRadialGradient(cx1-r*0.3,cy-r*0.3,r*0.1,cx1,cy,r);
+  gv.addColorStop(0,'#b47aff'); gv.addColorStop(1,'#5b21b6');
+  ctx.beginPath(); ctx.arc(cx1,cy,r,0,Math.PI*2);
+  ctx.fillStyle=gv; ctx.fill();
+  ctx.strokeStyle='rgba(155,93,229,0.6)'; ctx.lineWidth=1.5*dpr; ctx.stroke();
+  ctx.fillStyle='#fff'; ctx.font=`bold ${10*dpr}px Share Tech Mono,monospace`;
+  ctx.textAlign='center'; ctx.fillText('V',cx1,cy+3*dpr);
+
+  // Spy
+  const gs=ctx.createRadialGradient(cx2-r*0.3,cy-r*0.3,r*0.1,cx2,cy,r);
+  gs.addColorStop(0,'#ff8c00'); gs.addColorStop(1,'#b45309');
+  ctx.beginPath(); ctx.arc(cx2,cy,r,0,Math.PI*2);
+  ctx.fillStyle=gs; ctx.fill();
+  ctx.strokeStyle='rgba(255,107,0,0.6)'; ctx.lineWidth=1.5*dpr; ctx.stroke();
+  ctx.fillStyle='#fff'; ctx.font=`bold ${10*dpr}px Share Tech Mono,monospace`;
+  ctx.textAlign='center'; ctx.fillText('S',cx2,cy+3*dpr);
+
+  // Labels
+  ctx.fillStyle='rgba(138,133,160,0.7)';
+  ctx.font=`${10*dpr}px Rajdhani,sans-serif`;
+  ctx.textAlign='center';
+  ctx.fillText('Victim cable',cx1,cy+r+16*dpr);
+  ctx.fillText('Spy cable',cx2,cy+r+16*dpr);
+
+  // Distance arrow
+  ctx.strokeStyle='rgba(138,133,160,0.4)'; ctx.lineWidth=0.8*dpr;
+  ctx.beginPath(); ctx.moveTo(cx1+r+4*dpr,cy-r-10*dpr); ctx.lineTo(cx2-r-4*dpr,cy-r-10*dpr); ctx.stroke();
+  ctx.fillStyle='rgba(138,133,160,0.7)';
+  ctx.font=`${9*dpr}px Share Tech Mono,monospace`;
+  ctx.fillText(`d = ${sep.toFixed(0)} mm`,midx,cy-r-16*dpr);
+
+  ctx.fillStyle='#b47aff';
+  ctx.font=`bold ${11*dpr}px Share Tech Mono,monospace`;
+  ctx.textAlign='left';
+  ctx.fillText('⊙ i(t)',cx1+r+6*dpr,cy+4*dpr);
+
+  ctx.fillStyle='rgba(255,107,0,0.8)';
+  ctx.font=`${9*dpr}px Share Tech Mono,monospace`;
+  ctx.textAlign='center';
+  ctx.fillText('Φ coupling',midx,cy-r-30*dpr);
+}
+
+// Init
+buildBits();
+update();
+window.addEventListener('resize',()=>{update();});
+</script>
+</body>
+</html>

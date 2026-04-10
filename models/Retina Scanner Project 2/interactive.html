@@ -1,0 +1,1217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClearSight — Optics Through Physics</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+:root{
+  --ink:#080610; --cream:#f8f3ea; --warm:#ede4d4;
+  --rust:#c4622d; --teal:#1a8a7a; --gold:#d4a82a;
+  --blue:#4a90d4; --muted:#7a6a58; --sand:#d8cbb8;
+  --dim:rgba(255,255,255,0.06); --dimb:rgba(255,255,255,0.12);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--ink);color:var(--cream);font-family:'Syne',sans-serif;overflow-x:hidden;cursor:none;}
+
+/* ─── CURSOR ─── */
+#cur{position:fixed;width:10px;height:10px;border:2px solid var(--gold);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:border-color 0.2s,transform 0.15s;}
+#cur2{position:fixed;width:32px;height:32px;border:1px solid rgba(212,168,42,0.25);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);}
+body.lens-mode #cur{border-color:var(--blue);}
+body.lens-mode #cur2{width:180px;height:180px;border:2px solid rgba(74,144,212,0.6);background:rgba(120,190,255,0.06);backdrop-filter:blur(1px);}
+
+/* ─── SCANLINES ─── */
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 3px);pointer-events:none;z-index:8000;}
+
+/* ─── PROGRESS ─── */
+#prog{position:fixed;top:0;left:0;right:0;height:2px;background:rgba(255,255,255,0.06);z-index:7500;}
+#pfill{height:100%;width:0%;background:linear-gradient(90deg,var(--teal),var(--gold));box-shadow:0 0 8px var(--gold);transition:width 0.7s ease;}
+.stepdots{position:fixed;right:20px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:10px;z-index:7000;}
+.sd{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,0.12);cursor:pointer;transition:all 0.3s;}
+.sd.on{background:var(--gold);box-shadow:0 0 8px var(--gold);}
+.sd.done{background:var(--teal);}
+
+/* ─── SCENES ─── */
+.scene{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;overflow:hidden;padding:56px 28px;}
+.scene-enter{animation:sIn 0.7s cubic-bezier(.4,0,.2,1) forwards;}
+@keyframes sIn{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes glow{0%,100%{text-shadow:0 0 12px rgba(212,168,42,0.3)}50%{text-shadow:0 0 24px rgba(212,168,42,0.6)}}
+
+/* ═══════ S0 — INTRO ═══════ */
+#s0{background:var(--ink);text-align:center;}
+.bw-bg{position:absolute;inset:0;pointer-events:none;overflow:hidden;}
+.bw-word{position:absolute;font-family:'DM Serif Display',serif;color:rgba(255,255,255,0.04);user-select:none;}
+.s0-eyeball{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(70vw,520px);height:min(70vw,520px);pointer-events:none;opacity:0.06;}
+.tag{font-size:10px;letter-spacing:6px;text-transform:uppercase;color:var(--teal);margin-bottom:20px;opacity:0;animation:fadeUp 0.8s 0.3s ease forwards;}
+.h1{font-family:'DM Serif Display',serif;font-size:clamp(38px,7vw,92px);line-height:1.02;margin-bottom:24px;opacity:0;animation:fadeUp 0.8s 0.5s ease forwards;position:relative;z-index:1;}
+.h1 em{font-style:italic;color:var(--gold);animation:glow 3s infinite;}
+.sub{font-size:15px;color:rgba(255,255,255,0.4);max-width:460px;line-height:1.9;margin-bottom:44px;font-weight:400;opacity:0;animation:fadeUp 0.8s 0.8s ease forwards;position:relative;z-index:1;}
+.stat-row{display:flex;gap:36px;justify-content:center;margin-bottom:48px;opacity:0;animation:fadeUp 0.8s 1.0s ease forwards;position:relative;z-index:1;}
+.stat{text-align:center;}
+.stat-n{font-family:'DM Serif Display',serif;font-size:28px;color:var(--gold);}
+.stat-l{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.3);margin-top:4px;}
+.btn-go{background:transparent;border:1.5px solid var(--gold);color:var(--gold);font-family:'Syne',sans-serif;font-size:12px;letter-spacing:4px;text-transform:uppercase;padding:15px 44px;cursor:pointer;position:relative;overflow:hidden;transition:all 0.3s;opacity:0;animation:fadeUp 0.8s 1.2s ease forwards;z-index:1;}
+.btn-go::before{content:'';position:absolute;top:0;left:-100%;width:100%;height:100%;background:linear-gradient(90deg,transparent,rgba(212,168,42,0.1),transparent);transition:left 0.5s;}
+.btn-go:hover::before{left:100%;}
+.btn-go:hover{box-shadow:0 0 28px rgba(212,168,42,0.2);}
+
+/* ═══════ S1 — EYE CHART ═══════ */
+#s1{background:#f4efe6;color:var(--ink);display:none;}
+.chart-wrap{width:100%;max-width:780px;display:grid;grid-template-columns:1fr 300px;gap:32px;align-items:start;}
+@media(max-width:680px){.chart-wrap{grid-template-columns:1fr;}}
+.chart-label{font-size:10px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-bottom:18px;text-align:center;}
+.eye-chart{background:#fff;border:1px solid var(--sand);padding:24px 18px;display:flex;flex-direction:column;align-items:center;gap:1px;box-shadow:0 4px 24px rgba(0,0,0,0.07);}
+.cr{font-family:'DM Mono',monospace;color:var(--ink);cursor:pointer;padding:3px 8px;border-radius:2px;letter-spacing:4px;transition:filter 0.25s,opacity 0.25s,background 0.15s;}
+.cr:hover{background:rgba(26,138,122,0.07);}
+.cr.act{outline:2px solid var(--teal);background:rgba(26,138,122,0.08);}
+.ccard{background:#fff;border:1px solid var(--sand);padding:20px;box-shadow:0 4px 20px rgba(0,0,0,0.05);margin-bottom:12px;}
+.cctitle{font-size:9px;letter-spacing:4px;text-transform:uppercase;color:var(--muted);margin-bottom:14px;}
+.pdisp{font-family:'DM Serif Display',serif;font-size:52px;text-align:center;margin:12px 0;line-height:1;}
+.pdisp .sg{font-size:30px;color:var(--muted);}
+.pdisp .un{font-size:15px;color:var(--muted);font-family:'Syne',sans-serif;}
+.pslider{width:100%;-webkit-appearance:none;appearance:none;height:3px;background:var(--sand);outline:none;cursor:pointer;margin:8px 0;}
+.pslider::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--teal);cursor:pointer;box-shadow:0 2px 8px rgba(26,138,122,0.4);}
+.slbl{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:3px;}
+.cm-wrap{margin-top:14px;}
+.cm-lbl{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);margin-bottom:7px;}
+.cm-bar{height:5px;background:var(--sand);border-radius:3px;overflow:hidden;}
+.cm-fill{height:100%;background:linear-gradient(90deg,var(--rust),var(--gold),var(--teal));border-radius:3px;transition:width 0.35s cubic-bezier(.4,0,.2,1);}
+.cm-pct{font-family:'DM Serif Display',serif;font-size:20px;text-align:right;color:var(--teal);margin-top:5px;}
+/* Math popup in s1 */
+.math-pop{background:var(--ink);color:var(--cream);padding:16px 18px;margin-top:14px;font-family:'DM Mono',monospace;font-size:12px;line-height:1.9;border-left:2px solid var(--gold);display:none;}
+.math-pop.show{display:block;}
+.mline{display:flex;align-items:baseline;gap:6px;opacity:0;transform:translateX(-8px);transition:opacity 0.4s,transform 0.4s;}
+.mline.vis{opacity:1;transform:none;}
+.mline .eq{color:var(--gold);}
+.mline .val{color:var(--teal);}
+.mline .note{color:rgba(255,255,255,0.25);font-size:10px;}
+.rsel{display:flex;flex-direction:column;gap:5px;margin-top:8px;}
+.rbtn{padding:7px 11px;border:1px solid var(--sand);background:transparent;font-family:'Syne',sans-serif;font-size:10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;color:var(--ink);transition:all 0.18s;}
+.rbtn.on{background:var(--teal);color:#fff;border-color:var(--teal);}
+.rbtn:hover:not(.on){background:rgba(26,138,122,0.06);}
+.btn-next{width:100%;padding:13px;background:var(--teal);border:none;color:#fff;font-family:'Syne',sans-serif;font-size:11px;letter-spacing:4px;text-transform:uppercase;cursor:pointer;margin-top:14px;transition:all 0.3s;opacity:0.35;pointer-events:none;}
+.btn-next.ok{opacity:1;pointer-events:all;}
+.btn-next.ok:hover{background:#147060;}
+
+/* ═══════ S2 — 3D EYE ═══════ */
+#s2{background:var(--ink);display:none;padding:0;justify-content:flex-end;}
+#threeCanvas{position:absolute;inset:0;width:100%!important;height:100%!important;z-index:0;}
+
+/* Top-left HUD: title + sliders + info — small footprint */
+.s2-overlay{position:relative;z-index:2;width:100%;max-width:960px;display:flex;flex-direction:column;align-items:stretch;pointer-events:none;}
+.s2-top{display:flex;justify-content:space-between;align-items:flex-start;padding:28px 28px 0;pointer-events:none;}
+.s2-left{background:rgba(8,6,16,0.72);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,0.07);padding:20px 22px;max-width:320px;pointer-events:all;}
+.s2-tag{font-size:10px;letter-spacing:5px;text-transform:uppercase;color:var(--teal);margin-bottom:8px;}
+.s2-title{font-family:'DM Serif Display',serif;font-size:clamp(20px,3vw,32px);line-height:1.1;margin-bottom:6px;}
+.s2-sub{font-size:12px;color:rgba(255,255,255,0.3);line-height:1.7;max-width:300px;}
+.s2-controls{margin-top:18px;}
+.sc-row{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+.sc-label{font-size:9px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.3);width:72px;flex-shrink:0;}
+.sc-slider{flex:1;-webkit-appearance:none;appearance:none;height:3px;background:rgba(255,255,255,0.1);outline:none;cursor:pointer;pointer-events:all;}
+.sc-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--gold);cursor:pointer;box-shadow:0 0 8px rgba(212,168,42,0.4);}
+.sc-val{font-family:'DM Mono',monospace;font-size:12px;color:var(--gold);width:64px;text-align:right;}
+
+/* Math panel — collapsible strip at the bottom */
+.math-panel-wrap{padding:0 28px 20px;pointer-events:all;}
+.math-toggle{display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:6px;user-select:none;}
+.math-toggle-label{font-size:9px;letter-spacing:4px;text-transform:uppercase;color:rgba(255,255,255,0.3);transition:color 0.2s;}
+.math-toggle:hover .math-toggle-label{color:var(--gold);}
+.math-toggle-arrow{font-size:10px;color:rgba(255,255,255,0.25);transition:transform 0.3s;}
+.math-toggle-arrow.open{transform:rotate(180deg);}
+.math-panel{background:rgba(8,6,16,0.88);border:1px solid rgba(255,255,255,0.08);backdrop-filter:blur(14px);padding:18px 22px;display:none;}
+.math-panel.open{display:block;}
+.mp-title{font-size:9px;letter-spacing:4px;text-transform:uppercase;color:rgba(255,255,255,0.25);margin-bottom:14px;}
+.formula-row{display:flex;gap:10px;margin-bottom:12px;}
+.formula-box{flex:1;background:rgba(212,168,42,0.06);border:1px solid rgba(212,168,42,0.2);padding:10px 14px;text-align:center;}
+.formula-box .fml{font-family:'DM Mono',monospace;font-size:13px;color:var(--gold);letter-spacing:1px;}
+.formula-box .fml sub{font-size:9px;}
+.deriv-steps{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;}
+@media(max-width:700px){.deriv-steps{grid-template-columns:1fr 1fr;}}
+.ds{display:flex;gap:8px;align-items:flex-start;font-family:'DM Mono',monospace;font-size:10px;line-height:1.6;padding:7px 9px;background:rgba(255,255,255,0.02);border-left:2px solid transparent;transition:all 0.3s;}
+.ds.live{border-left-color:var(--teal);background:rgba(26,138,122,0.06);}
+.ds .step-n{color:rgba(255,255,255,0.2);flex-shrink:0;min-width:14px;}
+.ds .step-eq{flex:1;}
+.ds .step-eq .hi{color:var(--teal);}
+.ds .step-eq .res{color:var(--gold);font-weight:500;}
+.ds .step-eq .gray{color:rgba(255,255,255,0.25);}
+.info-row{display:flex;gap:2px;margin-top:20px;}
+.ic{flex:1;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);padding:12px 14px;}
+.ic-lbl{font-size:8px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.2);margin-bottom:5px;}
+.ic-val{font-family:'DM Serif Display',serif;font-size:20px;color:#fff;}
+.ic-val span{font-size:10px;color:rgba(255,255,255,0.25);font-family:'Syne',sans-serif;}
+.btn-rev{margin-top:14px;width:100%;padding:14px;background:transparent;border:1.5px solid var(--gold);color:var(--gold);font-family:'Syne',sans-serif;font-size:11px;letter-spacing:4px;text-transform:uppercase;cursor:pointer;transition:all 0.3s;opacity:0.3;pointer-events:none;}
+.btn-rev.ok{opacity:1;pointer-events:all;}
+.btn-rev.ok:hover{background:rgba(212,168,42,0.08);box-shadow:0 0 20px rgba(212,168,42,0.2);}
+
+/* ═══════ S3 — DRAGGABLE LENS (enhanced) ═══════ */
+#s3{background:var(--ink);display:none;}
+.s3-wrap{width:100%;max-width:920px;}
+.s3-head{text-align:center;margin-bottom:32px;}
+.s3-tag{font-size:10px;letter-spacing:5px;text-transform:uppercase;color:var(--teal);margin-bottom:10px;}
+.s3-title{font-family:'DM Serif Display',serif;font-size:clamp(26px,4vw,46px);line-height:1.1;}
+.s3-sub{font-size:13px;color:rgba(255,255,255,0.35);margin-top:10px;max-width:480px;margin-left:auto;margin-right:auto;}
+.stage{position:relative;background:rgba(255,255,255,0.015);border:1px solid rgba(255,255,255,0.07);}
+#lc{width:100%;height:400px;display:block;cursor:none;}
+.dhint{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);font-size:9px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.18);pointer-events:none;transition:opacity 0.5s;}
+.dhint.hide{opacity:0;}
+.irow{display:flex;gap:1px;margin-top:1px;}
+.ic2{flex:1;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);padding:13px 15px;}
+.ic2-lbl{font-size:8px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.2);margin-bottom:4px;}
+.ic2-val{font-family:'DM Serif Display',serif;font-size:19px;color:#fff;}
+
+/* Live math ticker under the lens canvas */
+.math-ticker{background:rgba(212,168,42,0.04);border:1px solid rgba(212,168,42,0.12);padding:16px 20px;margin-top:1px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.mt-cell{font-family:'DM Mono',monospace;font-size:11px;line-height:1.7;}
+.mt-cell .label{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.2);display:block;margin-bottom:3px;}
+.mt-cell .expr{color:rgba(255,255,255,0.5);}
+.mt-cell .result{color:var(--gold);font-size:13px;}
+
+/* ═══════ S4 — ACCOMMODATION ═══════ */
+#s4{background:#f3ede3;color:var(--ink);display:none;}
+.acc-wrap{width:100%;max-width:920px;}
+.acc-head{text-align:center;margin-bottom:40px;}
+.acc-title{font-family:'DM Serif Display',serif;font-size:clamp(26px,4vw,52px);line-height:1.1;margin-bottom:10px;}
+.acc-sub{font-size:14px;color:var(--muted);max-width:500px;margin:0 auto;line-height:1.8;}
+.acc-body{display:grid;grid-template-columns:260px 1fr;gap:28px;}
+@media(max-width:680px){.acc-body{grid-template-columns:1fr;}}
+.sc-cards{display:flex;flex-direction:column;gap:7px;}
+.scc{display:flex;align-items:center;gap:13px;padding:14px 15px;background:#fff;border:2px solid var(--sand);cursor:pointer;transition:all 0.22s;position:relative;overflow:hidden;}
+.scc::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--sand);transition:background 0.3s;}
+.scc.on{border-color:var(--teal);}
+.scc.on::before{background:var(--teal);}
+.scc:hover:not(.on){background:#f8f3ea;}
+.scc-icon{font-size:24px;flex-shrink:0;}
+.scc-name{font-size:13px;font-weight:700;color:var(--ink);}
+.scc-dist{font-size:10px;color:var(--muted);margin-top:1px;}
+.scc-p{font-family:'DM Serif Display',serif;font-size:17px;color:var(--teal);white-space:nowrap;margin-left:auto;}
+.scc.on .scc-p{color:var(--rust);}
+.acc-right{}
+#ac2{width:100%;height:260px;display:block;border:1px solid var(--sand);background:#fff;}
+/* Full math derivation for acc */
+.acc-math{background:var(--ink);color:var(--cream);padding:20px 24px;margin-top:1px;}
+.am-title{font-size:9px;letter-spacing:4px;text-transform:uppercase;color:rgba(255,255,255,0.25);margin-bottom:14px;}
+.am-formula{font-family:'DM Mono',monospace;font-size:13px;color:var(--gold);text-align:center;padding:12px;border:1px solid rgba(212,168,42,0.2);margin-bottom:14px;letter-spacing:1px;}
+.am-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+.am-cell{background:rgba(255,255,255,0.03);padding:11px 13px;}
+.am-lbl{font-size:8px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.25);margin-bottom:3px;}
+.am-val{font-size:16px;font-family:'DM Serif Display',serif;color:#fff;transition:all 0.4s;}
+.am-val.hi{color:var(--gold);}
+.am-derivation{margin-top:12px;font-family:'DM Mono',monospace;font-size:11px;color:rgba(255,255,255,0.4);line-height:1.9;background:rgba(255,255,255,0.02);padding:12px;border-left:2px solid var(--teal);}
+.am-derivation .hl{color:var(--teal);}
+.am-derivation .hr{color:var(--gold);}
+
+/* ═══════ S5 — PRESCRIPTION ═══════ */
+#s5{background:var(--ink);display:none;}
+.rx-wrap{width:100%;max-width:620px;text-align:center;}
+.rx-tag{font-size:10px;letter-spacing:6px;text-transform:uppercase;color:var(--gold);margin-bottom:18px;}
+.rx-h{font-family:'DM Serif Display',serif;font-size:clamp(30px,5vw,64px);line-height:1.05;margin-bottom:36px;}
+/* Physics derivation chain */
+.deriv-chain{background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07);padding:22px;margin-bottom:22px;text-align:left;}
+.dc-title{font-size:9px;letter-spacing:4px;text-transform:uppercase;color:rgba(255,255,255,0.2);margin-bottom:16px;}
+.dc-step{display:grid;grid-template-columns:24px 1fr;gap:8px;align-items:start;margin-bottom:10px;}
+.dc-num{font-family:'DM Mono',monospace;font-size:10px;color:rgba(255,255,255,0.2);padding-top:2px;}
+.dc-content{font-family:'DM Mono',monospace;font-size:11px;line-height:1.8;color:rgba(255,255,255,0.45);}
+.dc-content .hl{color:var(--teal);}
+.dc-content .gold{color:var(--gold);}
+/* Prescription card */
+.rxcard{background:var(--cream);color:var(--ink);padding:40px 44px;position:relative;margin-bottom:24px;box-shadow:0 24px 80px rgba(0,0,0,0.6);}
+.rxcard::before{content:'Rx';position:absolute;top:18px;right:22px;font-family:'DM Serif Display',serif;font-size:56px;color:rgba(0,0,0,0.05);font-style:italic;}
+.rx-brand{font-family:'DM Serif Display',serif;font-size:16px;color:var(--muted);letter-spacing:2px;margin-bottom:24px;}
+.rx-hr{border:none;border-top:1px solid var(--sand);margin:18px 0;}
+.rx-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;}
+.rx-fl{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--muted);}
+.rx-fv{font-family:'DM Serif Display',serif;font-size:26px;}
+.rx-fv.big{font-size:44px;color:var(--teal);}
+.rx-fv.neg{color:var(--rust);}
+.rx-fv.pos{color:var(--teal);}
+.rx-note{font-size:12px;color:var(--muted);line-height:1.8;text-align:left;margin-top:6px;}
+.rx-stamp{position:absolute;bottom:22px;right:22px;width:58px;height:58px;border:2px solid var(--teal);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--teal);text-align:center;line-height:1.4;}
+.rx-actions{display:flex;gap:10px;justify-content:center;}
+.btn-act{padding:13px 30px;font-family:'Syne',sans-serif;font-size:11px;letter-spacing:3px;text-transform:uppercase;cursor:pointer;transition:all 0.3s;border:1.5px solid;}
+.btn-rst{background:transparent;border-color:rgba(255,255,255,0.15);color:rgba(255,255,255,0.35);}
+.btn-rst:hover{border-color:rgba(255,255,255,0.4);color:#fff;}
+.btn-prn{background:var(--gold);border-color:var(--gold);color:var(--ink);}
+.btn-prn:hover{box-shadow:0 0 20px rgba(212,168,42,0.4);}
+
+.rxcard.perfect{border:2px solid var(--teal);box-shadow:0 24px 80px rgba(0,0,0,0.6),0 0 60px rgba(26,138,122,0.2);}
+.rxcard.perfect .rx-brand{color:var(--teal);}
+@keyframes perfectPulse{0%,100%{box-shadow:0 24px 80px rgba(0,0,0,0.6),0 0 40px rgba(26,138,122,0.15)}50%{box-shadow:0 24px 80px rgba(0,0,0,0.6),0 0 80px rgba(26,138,122,0.35)}}
+.rxcard.perfect{animation:perfectPulse 3s infinite;}
+@media print{body>*:not(#s5){display:none!important;}#s5{display:flex!important;background:#fff!important;}.rxcard{box-shadow:none!important;border:1px solid #ccc!important;animation:none!important;}#prog,.stepdots,#cur,#cur2,.rx-actions,.deriv-chain{display:none!important;}}
+</style>
+</head>
+<body>
+<div id="cur"></div><div id="cur2"></div>
+<div id="prog"><div id="pfill"></div></div>
+<div class="stepdots">
+  <div class="sd on" id="d0" onclick="go(0)"></div>
+  <div class="sd" id="d1" onclick="go(1)"></div>
+  <div class="sd" id="d2" onclick="go(2)"></div>
+  <div class="sd" id="d3" onclick="go(3)"></div>
+  <div class="sd" id="d4" onclick="go(4)"></div>
+  <div class="sd" id="d5" onclick="go(5)"></div>
+</div>
+
+<!-- ═══ S0 — INTRO ═══ -->
+<div class="scene" id="s0">
+  <div class="bw-bg" id="bwbg"></div>
+  <canvas id="s0canvas" style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:0.18;z-index:0;"></canvas>
+  <div class="tag" style="z-index:1;">Geometrical Optics · Vision Science</div>
+  <h1 class="h1">The world is<br><em>blurry</em> —<br>until physics<br>fixes it</h1>
+  <p class="sub">2.2 billion people wear glasses. Every lens is a precise calculation. Take the interactive test and derive your own prescription from first principles.</p>
+  <div class="stat-row">
+    <div class="stat"><div class="stat-n">2.2B</div><div class="stat-l">People corrected</div></div>
+    <div class="stat"><div class="stat-n">±0.25D</div><div class="stat-l">Prescription precision</div></div>
+    <div class="stat"><div class="stat-n">15mm</div><div class="stat-l">Retina distance OA′</div></div>
+  </div>
+  <button class="btn-go" onclick="go(1)">Begin Vision Test →</button>
+</div>
+
+<!-- ═══ S1 — EYE CHART ═══ -->
+<div class="scene" id="s1">
+  <div class="chart-wrap">
+    <div>
+      <div class="chart-label">Snellen Chart — tune lens until clear</div>
+      <div class="eye-chart" id="echart"></div>
+    </div>
+    <div>
+      <div class="ccard">
+        <div class="cctitle">Corrective Power</div>
+        <div class="pdisp"><span class="sg" id="sg">−</span><span id="pv">0.00</span><span class="un"> D</span></div>
+        <input type="range" class="pslider" id="ps" min="-8" max="6" step="0.25" value="0">
+        <div class="slbl"><span>−8.00 D (myopia)</span><span>+6.00 D (hyperopia)</span></div>
+        <div class="cm-wrap">
+          <div class="cm-lbl">Chart Clarity</div>
+          <div class="cm-bar"><div class="cm-fill" id="cmf" style="width:25%"></div></div>
+          <div class="cm-pct" id="cmpct">25%</div>
+        </div>
+      </div>
+      <div class="ccard">
+        <div class="cctitle">Test Row</div>
+        <div class="rsel" id="rsel"></div>
+      </div>
+      <!-- Live math box -->
+      <div class="math-pop" id="mpop">
+        <div class="mline" id="ml0"><span class="eq">OA (far point)</span><span class="val" id="ml0v">—</span><span class="note">m</span></div>
+        <div class="mline" id="ml1"><span class="eq">P = 1/OA′ − 1/OA</span></div>
+        <div class="mline" id="ml2"><span class="eq">P = 1/0.015 −</span><span class="val" id="ml2v">—</span></div>
+        <div class="mline" id="ml3"><span class="eq">P =</span><span class="val" id="ml3v">—</span><span class="note">D</span></div>
+      </div>
+      <button class="btn-next" id="bn1" onclick="go(2)">Proceed to 3D Eye Lab →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ S2 — 3D EYE ═══ -->
+<div class="scene" id="s2">
+  <canvas id="threeCanvas"></canvas>
+  <div class="s2-overlay">
+    <!-- Top row: HUD left, empty right (eye is visible in centre) -->
+    <div class="s2-top">
+      <div class="s2-left">
+        <div class="s2-tag">3D Optical Model</div>
+        <h2 class="s2-title">Inside the human eye</h2>
+        <p class="s2-sub">Drag to rotate. Sliders control accommodation.</p>
+        <div class="s2-controls">
+          <div class="sc-row">
+            <div class="sc-label">Object dist.</div>
+            <input type="range" class="sc-slider" id="objSlider" min="10" max="200" step="1" value="100" oninput="update3D()">
+            <div class="sc-val" id="objVal">100 cm</div>
+          </div>
+          <div class="sc-row">
+            <div class="sc-label">Correction</div>
+            <input type="range" class="sc-slider" id="corrSlider" min="-8" max="0" step="0.25" value="-2" oninput="update3D()">
+            <div class="sc-val" id="corrVal">−2.00 D</div>
+          </div>
+        </div>
+        <div class="info-row" style="margin-top:14px;">
+          <div class="ic"><div class="ic-lbl">Eye Power</div><div class="ic-val" id="i3P">—<span> D</span></div></div>
+          <div class="ic"><div class="ic-lbl">Focal length</div><div class="ic-val" id="i3F">—<span> mm</span></div></div>
+        </div>
+        <button class="btn-rev" id="br2" onclick="go(3)">Lens Lab →</button>
+      </div>
+    </div>
+
+    <!-- Bottom: collapsible Descartes math panel -->
+    <div class="math-panel-wrap">
+      <div class="math-toggle" onclick="toggleMath()">
+        <span class="math-toggle-label">// Descartes conjugate relation</span>
+        <span class="math-toggle-arrow" id="mathArrow">▲</span>
+      </div>
+      <div class="math-panel" id="mathPanel">
+        <div class="formula-row">
+          <div class="formula-box"><div class="fml">1/f′ = 1/OA′ − 1/OA</div></div>
+          <div class="formula-box"><div class="fml">P (D) = 1/f′ (m)</div></div>
+        </div>
+        <div class="deriv-steps" id="ds3d">
+          <div class="ds" id="d3s0"><span class="step-n">1</span><span class="step-eq">OA′ = <span class="hi">+0.015</span> m <span class="gray">(retina)</span></span></div>
+          <div class="ds" id="d3s1"><span class="step-n">2</span><span class="step-eq">OA = −<span class="hi" id="d3oa">?</span> m <span class="gray">(object)</span></span></div>
+          <div class="ds" id="d3s2"><span class="step-n">3</span><span class="step-eq">P = 1/0.015 + 1/<span class="hi" id="d3oa2">?</span></span></div>
+          <div class="ds" id="d3s3"><span class="step-n">4</span><span class="step-eq">P<sub>eye</sub> = <span class="res" id="d3pval">?</span> D</span></div>
+          <div class="ds" id="d3s4"><span class="step-n">5</span><span class="step-eq">P<sub>glasses</sub> = <span class="res" id="d3pcorr">?</span> D</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ S3 — DRAGGABLE LENS ═══ -->
+<div class="scene" id="s3">
+  <div class="s3-wrap">
+    <div class="s3-head">
+      <div class="s3-tag">Interactive Lens Lab</div>
+      <h2 class="s3-title">Drag the lens to focus light</h2>
+      <p class="s3-sub">Position the corrective lens so all rays converge exactly on the retina. Watch the math update in real time.</p>
+    </div>
+    <div class="stage">
+      <canvas id="lc"></canvas>
+      <div class="dhint" id="dh">← drag the lens →</div>
+    </div>
+    <div class="irow">
+      <div class="ic2"><div class="ic2-lbl">Lens pos.</div><div class="ic2-val" id="l3pos">—</div></div>
+      <div class="ic2"><div class="ic2-lbl">Focus error</div><div class="ic2-val" id="l3err">—</div></div>
+      <div class="ic2"><div class="ic2-lbl">P corrective</div><div class="ic2-val" id="l3pwr">—</div></div>
+      <div class="ic2"><div class="ic2-lbl">Status</div><div class="ic2-val" id="l3sta" style="font-size:13px;padding-top:4px;">Adjust</div></div>
+    </div>
+    <!-- Live math ticker -->
+    <div class="math-ticker">
+      <div class="mt-cell"><span class="label">Far point OA</span><span class="expr">OA = 1/P</span><br><span class="result" id="mt1">—</span></div>
+      <div class="mt-cell"><span class="label">Glasses formula</span><span class="expr">P = 1/f′ − 1/OA</span><br><span class="result" id="mt2">—</span></div>
+      <div class="mt-cell"><span class="label">Focus on retina?</span><span class="expr">|error| &lt; 0.5mm</span><br><span class="result" id="mt3">—</span></div>
+    </div>
+    <button class="btn-rev" id="br3" onclick="go(4)" style="margin-top:12px;">Accommodation Explorer →</button>
+  </div>
+</div>
+
+<!-- ═══ S4 — ACCOMMODATION ═══ -->
+<div class="scene" id="s4">
+  <div class="acc-wrap">
+    <div class="acc-head">
+      <div style="font-size:10px;letter-spacing:5px;text-transform:uppercase;color:var(--teal);margin-bottom:10px;">Live Physics</div>
+      <h2 class="acc-title">Your lens changes power<br>every second</h2>
+      <p class="acc-sub">Click each object to see how your ciliary muscles reshape the lens — adjusting focal length in real time.</p>
+    </div>
+    <div class="acc-body">
+      <div class="sc-cards" id="scards"></div>
+      <div class="acc-right">
+        <canvas id="ac2"></canvas>
+        <div class="acc-math">
+          <div class="am-title">// Accommodation calculation</div>
+          <div class="am-formula" id="amfml">P = 1/OA′ − 1/OA</div>
+          <div class="am-grid">
+            <div class="am-cell"><div class="am-lbl">OA (object)</div><div class="am-val" id="amoa">−∞</div></div>
+            <div class="am-cell"><div class="am-lbl">OA′ (retina)</div><div class="am-val">+15 mm</div></div>
+            <div class="am-cell"><div class="am-lbl">P (power)</div><div class="am-val hi" id="amp">66.67 D</div></div>
+            <div class="am-cell"><div class="am-lbl">ΔP (amplitude)</div><div class="am-val hi" id="amdp">0.00 D</div></div>
+          </div>
+          <div class="am-derivation" id="amderiv">
+            P = 1/OA′ − 1/OA<br>
+            P = 1/<span class="hl">0.015</span> − 1/(<span class="hl">−∞</span>)<br>
+            P = <span class="hr">66.67</span> + 0 = <span class="hr">66.67 D</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:32px;">
+      <button class="btn-go" style="animation:none;opacity:1;" onclick="go(5)">See My Prescription →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ S5 — PRESCRIPTION ═══ -->
+<div class="scene" id="s5">
+  <div class="rx-wrap">
+    <div class="rx-tag">Optical Prescription</div>
+    <h2 class="rx-h">Physics made<br><em style="font-style:italic;color:var(--gold)">clear</em></h2>
+    <div class="deriv-chain" id="dchain">
+      <div class="dc-title">// Full derivation of your prescription</div>
+    </div>
+    <div class="rxcard" id="rxcard">
+      <div class="rx-brand">ClearSight Optics</div>
+      <hr class="rx-hr">
+      <div class="rx-row"><span class="rx-fl">Condition</span><span class="rx-fv" id="rc1">—</span></div>
+      <div class="rx-row"><span class="rx-fl">Far Point OA</span><span class="rx-fv" id="rc2">—</span></div>
+      <div class="rx-row"><span class="rx-fl">Required Power</span><span class="rx-fv big" id="rc3">—</span></div>
+      <div class="rx-row"><span class="rx-fl">Focal Length f′</span><span class="rx-fv" id="rc4">—</span></div>
+      <div class="rx-row"><span class="rx-fl">Lens Type</span><span class="rx-fv" id="rc5">—</span></div>
+      <hr class="rx-hr">
+      <div class="rx-note" id="rcnote">—</div>
+      <div class="rx-stamp">ClearSight<br>Verified ✓</div>
+    </div>
+    <div class="rx-actions">
+      <button class="btn-act btn-rst" onclick="restart()">← Retake</button>
+      <button class="btn-act btn-prn" onclick="window.print()">Print Rx</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════
+   CURSOR
+══════════════════════════════════════════ */
+const cur=document.getElementById('cur'),cur2=document.getElementById('cur2');
+let mx=innerWidth/2,my=innerHeight/2,cx2=mx,cy2=my;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px';});
+(function ac(){requestAnimationFrame(ac);cx2+=(mx-cx2)*.1;cy2+=(my-cy2)*.1;cur2.style.left=cx2+'px';cur2.style.top=cy2+'px';})();
+
+/* ══════════════════════════════════════════
+   SCENE MANAGER
+══════════════════════════════════════════ */
+let CS=0;
+const SN=['s0','s1','s2','s3','s4','s5'];
+const PROG=[0,20,40,60,80,100];
+
+function go(n){
+  document.getElementById(SN[CS]).style.display='none';
+  CS=n;
+  const el=document.getElementById(SN[n]);
+  el.style.display='flex';
+  el.classList.remove('scene-enter');void el.offsetWidth;el.classList.add('scene-enter');
+  document.getElementById('pfill').style.width=PROG[n]+'%';
+  for(let i=0;i<6;i++){const d=document.getElementById('d'+i);d.classList.toggle('on',i===n);d.classList.toggle('done',i<n);}
+  if(n===1)initChart();
+  if(n===2)init3D();
+  if(n===3)initLens();
+  if(n===4)initAcc();
+  if(n===5)buildRx();
+  document.body.classList.toggle('lens-mode',n===3);
+  scrollTo(0,0);
+}
+
+/* ══════════════════════════════════════════
+   S0 — INTRO: particle eye background
+══════════════════════════════════════════ */
+(function initS0(){
+  const words=['FOCUS','CLARITY','VISION','OPTICS','LIGHT','LENS','RETINA','CORNEA','DIOPTRE','CONVERGENT','REFRACTION','MYOPIA','SNELLEN'];
+  const bw=document.getElementById('bwbg');
+  words.forEach(w=>{const d=document.createElement('div');d.className='bw-word';d.textContent=w;d.style.cssText=`left:${Math.random()*88}%;top:${Math.random()*88}%;font-size:${Math.random()*52+18}px;filter:blur(${Math.random()*10+5}px);transform:rotate(${(Math.random()-.5)*28}deg);`;bw.appendChild(d);});
+  // Animated optical axis particles on canvas
+  const cv=document.getElementById('s0canvas');
+  const ctx=cv.getContext('2d');
+  const particles=[];
+  for(let i=0;i<60;i++)particles.push({x:Math.random()*1200,y:Math.random()*800,vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,r:Math.random()*1.5+.5,a:Math.random()});
+  function drawS0(){
+    cv.width=cv.clientWidth||1200;cv.height=cv.clientHeight||800;
+    requestAnimationFrame(drawS0);
+    ctx.clearRect(0,0,cv.width,cv.height);
+    particles.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0)p.x=cv.width;if(p.x>cv.width)p.x=0;
+      if(p.y<0)p.y=cv.height;if(p.y>cv.height)p.y=0;
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=`rgba(212,168,42,${p.a*.4})`;ctx.fill();
+    });
+    // Draw faint optical axis through center
+    const cy=cv.height/2;
+    ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(cv.width,cy);
+    ctx.strokeStyle='rgba(26,138,122,0.08)';ctx.lineWidth=1;ctx.setLineDash([6,8]);ctx.stroke();ctx.setLineDash([]);
+    // Lens shape
+    const lx=cv.width/2;
+    ctx.beginPath();ctx.ellipse(lx,cy,18,cv.height*.28,0,0,Math.PI*2);
+    ctx.fillStyle='rgba(74,144,212,0.04)';ctx.strokeStyle='rgba(74,144,212,0.1)';ctx.lineWidth=1.5;ctx.fill();ctx.stroke();
+  }
+  drawS0();
+})();
+
+/* ══════════════════════════════════════════
+   S1 — EYE CHART
+══════════════════════════════════════════ */
+const ROWS=[
+  {l:'E',      sz:66, label:'20/200', t:-5.5},
+  {l:'FP',     sz:50, label:'20/100', t:-4.0},
+  {l:'TOZ',    sz:38, label:'20/70',  t:-2.8},
+  {l:'LPED',   sz:29, label:'20/50',  t:-1.8},
+  {l:'PECFD',  sz:23, label:'20/40',  t:-0.8},
+  {l:'EDFCZP', sz:18, label:'20/30',  t: 0.0},  // perfect = 0D
+  {l:'FELOPZD',sz:14, label:'20/25',  t: 0.0},
+  {l:'DEFPOTEC',sz:11,label:'20/20',  t: 0.0},  // 20/20 = no correction needed
+];
+let selRow=7,chartDone=false;
+
+function initChart(){
+  const ec=document.getElementById('echart');
+  ec.innerHTML='';
+  ROWS.forEach((r,i)=>{
+    const d=document.createElement('div');
+    d.className='cr'+(i===selRow?' act':'');
+    d.style.fontSize=r.sz+'px';
+    d.textContent=r.l;d.dataset.i=i;
+    d.onclick=()=>selR(i);ec.appendChild(d);
+  });
+  const rs=document.getElementById('rsel');rs.innerHTML='';
+  ROWS.forEach((r,i)=>{
+    const b=document.createElement('button');b.className='rbtn'+(i===selRow?' on':'');
+    b.innerHTML=`<span>${r.label}</span><span style="font-family:'DM Mono';font-size:11px;">${r.l.length}L</span>`;
+    b.onclick=()=>selR(i);rs.appendChild(b);
+  });
+  const sl=document.getElementById('ps');sl.value=0;
+  sl.oninput=function(){updateChart();unlockNext();};
+  updateChart();
+  unlockNext();
+}
+
+function selR(i){
+  selRow=i;
+  document.querySelectorAll('.cr').forEach((r,j)=>r.classList.toggle('act',j===i));
+  document.querySelectorAll('.rbtn').forEach((b,j)=>b.classList.toggle('on',j===i));
+  updateChart();
+}
+
+function updateChart(){
+  const P=parseFloat(document.getElementById('ps').value);
+  // Sign display
+  if(Math.abs(P)<0.01){
+    document.getElementById('sg').textContent='';
+    document.getElementById('pv').textContent='0.00';
+  } else {
+    document.getElementById('sg').textContent=P<0?'−':'+';
+    document.getElementById('pv').textContent=Math.abs(P).toFixed(2);
+  }
+  // Blur each row: closer P is to row's ideal target → sharper
+  document.querySelectorAll('.cr').forEach((r,i)=>{
+    const err=Math.abs(P-ROWS[i].t);
+    const blur=Math.max(0,err*1.4);
+    r.style.filter=`blur(${blur.toFixed(1)}px)`;
+    r.style.opacity=Math.max(0.2,1-blur*0.06);
+  });
+  const err=Math.abs(P-ROWS[selRow].t);
+  const cl=Math.max(0,Math.min(100,100-err*22));
+  document.getElementById('cmf').style.width=cl+'%';
+  document.getElementById('cmpct').textContent=Math.round(cl)+'%';
+
+  // Live math panel
+  const mp=document.getElementById('mpop');
+  if(cl>35){
+    mp.classList.add('show');
+    if(Math.abs(P)<0.01){
+      document.getElementById('ml0v').textContent='∞ (perfect vision)';
+      document.getElementById('ml2v').textContent='0';
+      document.getElementById('ml3v').textContent='0.00 — No correction needed!';
+    } else {
+      const OA_m=(1/P).toFixed(3);
+      document.getElementById('ml0v').textContent=OA_m+' m';
+      document.getElementById('ml2v').textContent=`1/(${OA_m})`;
+      document.getElementById('ml3v').textContent=P.toFixed(2);
+    }
+    ['ml0','ml1','ml2','ml3'].forEach((id,k)=>{setTimeout(()=>document.getElementById(id).classList.add('vis'),k*120);});
+  }
+  window.rxP=P;
+  const bn=document.getElementById('bn1');
+  if(cl>75){
+    bn.textContent=Math.abs(P)<0.1?'✓ Perfect vision confirmed — Next →':'✓ Vision calibrated — Next →';
+    bn.style.background=Math.abs(P)<0.1?'#2a7a5a':'var(--teal)';
+  } else {
+    bn.textContent='Proceed to 3D Eye Lab →';
+    bn.style.background='';
+  }
+}
+
+function unlockNext(){
+  const P=parseFloat(document.getElementById('ps').value);
+  window.rxP=P;
+  const bn=document.getElementById('bn1');bn.classList.add('ok');
+}
+
+function toggleMath(){
+  const panel=document.getElementById('mathPanel');
+  const arrow=document.getElementById('mathArrow');
+  panel.classList.toggle('open');
+  arrow.classList.toggle('open');
+  arrow.textContent=panel.classList.contains('open')?'▼':'▲';
+}
+
+/* ══════════════════════════════════════════
+   S2 — THREE.JS 3D EYE  (clean rewrite)
+══════════════════════════════════════════ */
+let three={},animT=0,isOrbiting=false,lastMouse={x:0,y:0},eyeRot={x:0.18,y:0.35};
+
+function init3D(){
+  const cv=document.getElementById('threeCanvas');
+  // If already initialised just resize and refresh
+  if(three.renderer){
+    const W=cv.clientWidth||window.innerWidth, H=cv.clientHeight||window.innerHeight;
+    three.renderer.setSize(W,H);
+    three.camera.aspect=W/H; three.camera.updateProjectionMatrix();
+    update3D(); return;
+  }
+
+  const W=cv.clientWidth||window.innerWidth, H=cv.clientHeight||window.innerHeight;
+
+  /* ── renderer / camera ── */
+  three.scene    = new THREE.Scene();
+  three.camera   = new THREE.PerspectiveCamera(42, W/H, 0.01, 100);
+  three.camera.position.set(0, 0.6, 3.4);
+  three.renderer = new THREE.WebGLRenderer({canvas:cv, antialias:true, alpha:true});
+  three.renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  three.renderer.setSize(W,H);
+  three.renderer.setClearColor(0x000000, 0);
+
+  /* ── lights ── */
+  three.scene.add(new THREE.AmbientLight(0xffffff, 0.55));
+  const sun=new THREE.DirectionalLight(0xffeedd, 1.4); sun.position.set(3,4,5); three.scene.add(sun);
+  const fill=new THREE.DirectionalLight(0x88aaff, 0.6); fill.position.set(-3,1,-2); three.scene.add(fill);
+  three.innerLight=new THREE.PointLight(0xff9966, 1.8, 3); three.innerLight.position.set(-0.3,0,0); three.scene.add(three.innerLight);
+
+  /* ── PIVOT: everything inside eye rotates together ── */
+  three.pivot = new THREE.Group();
+  three.scene.add(three.pivot);
+
+  /* ── SCLERA (white of the eye, semi-transparent so we see inside) ── */
+  const sclMat = new THREE.MeshPhysicalMaterial({
+    color:0xf8f0e4, roughness:0.6, metalness:0,
+    transparent:true, opacity:0.30, side:THREE.FrontSide
+  });
+  three.pivot.add(new THREE.Mesh(new THREE.SphereGeometry(1,48,32), sclMat));
+
+  /* ── SCLERA inner surface (back-face, so interior is visible) ── */
+  const sclInnerMat = new THREE.MeshBasicMaterial({color:0xf0e0d0, transparent:true, opacity:0.08, side:THREE.BackSide});
+  three.pivot.add(new THREE.Mesh(new THREE.SphereGeometry(0.99,48,32), sclInnerMat));
+
+  /* ── RETINA (warm orange bowl at the back) ── */
+  // Use a partial sphere phiStart rotated so the bowl faces front
+  const retMat = new THREE.MeshBasicMaterial({color:0xd05828, transparent:true, opacity:0.75, side:THREE.BackSide});
+  const retMesh = new THREE.Mesh(new THREE.SphereGeometry(0.95,40,32, 0,Math.PI*2, Math.PI*0.52, Math.PI*0.48), retMat);
+  three.pivot.add(retMesh);
+
+  /* ── FOVEA (yellow-gold spot at very back centre) ── */
+  const fovMat = new THREE.MeshBasicMaterial({color:0xffe060, side:THREE.DoubleSide});
+  three.fovea  = new THREE.Mesh(new THREE.CircleGeometry(0.10,24), fovMat);
+  three.fovea.position.set(-0.96, 0, 0);
+  three.fovea.rotation.y = Math.PI/2;
+  three.pivot.add(three.fovea);
+
+  /* ── OPTIC NERVE stub ── */
+  const onMesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.065,0.09,0.28,14),
+    new THREE.MeshBasicMaterial({color:0xf0c060, transparent:true, opacity:0.8})
+  );
+  onMesh.rotation.z = Math.PI/2;
+  onMesh.position.set(-0.96, 0.30, 0);
+  three.pivot.add(onMesh);
+
+  /* ── VITREOUS (inner gel, very faint) ── */
+  const vitMat = new THREE.MeshBasicMaterial({color:0xc8e8ff, transparent:true, opacity:0.04, side:THREE.BackSide});
+  three.pivot.add(new THREE.Mesh(new THREE.SphereGeometry(0.93,32,24), vitMat));
+
+  /* ── CRYSTALLINE LENS (biconvex, sits ~0.35 from front) ── */
+  // Build biconvex by scaling a sphere on one axis
+  const lensMat = new THREE.MeshPhysicalMaterial({
+    color:0x99ddff, roughness:0.02, metalness:0,
+    transparent:true, opacity:0.45,
+    side:THREE.DoubleSide
+  });
+  three.lensGroup = new THREE.Group();
+  three.lensGroup.position.set(0.35, 0, 0);
+  // Front convex cap
+  const lf = new THREE.Mesh(new THREE.SphereGeometry(0.55,32,20, 0,Math.PI*2, 0,Math.PI*0.42), lensMat.clone());
+  lf.rotation.z = -Math.PI/2;
+  // Back convex cap
+  const lb = new THREE.Mesh(new THREE.SphereGeometry(0.55,32,20, 0,Math.PI*2, 0,Math.PI*0.42), lensMat.clone());
+  lb.rotation.z = Math.PI/2;
+  three.lensGroup.add(lf, lb);
+  three.pivot.add(three.lensGroup);
+
+  /* ── IRIS (coloured ring) ── */
+  const irisMat = new THREE.MeshBasicMaterial({color:0x1a7055, side:THREE.DoubleSide});
+  const irisMesh = new THREE.Mesh(new THREE.RingGeometry(0.25,0.54,48), irisMat);
+  irisMesh.position.set(0.82, 0, 0);
+  irisMesh.rotation.y = Math.PI/2;
+  three.pivot.add(irisMesh);
+
+  /* ── PUPIL ── */
+  three.pupil = new THREE.Mesh(
+    new THREE.CircleGeometry(0.25,36),
+    new THREE.MeshBasicMaterial({color:0x050208, side:THREE.DoubleSide})
+  );
+  three.pupil.position.set(0.83, 0, 0);
+  three.pupil.rotation.y = Math.PI/2;
+  three.pivot.add(three.pupil);
+
+  /* ── CORNEA (clear front dome) ── */
+  const cornMat = new THREE.MeshPhysicalMaterial({
+    color:0xaae8ff, roughness:0, metalness:0,
+    transparent:true, opacity:0.13, transmission:0.85,
+    side:THREE.FrontSide
+  });
+  const cornMesh = new THREE.Mesh(new THREE.SphereGeometry(1.04,36,24, 0,Math.PI*2, 0,Math.PI*0.32), cornMat);
+  cornMesh.rotation.z = -Math.PI/2;
+  three.pivot.add(cornMesh);
+
+  /* ── OPTICAL AXIS LINE (outside pivot so it stays fixed) ── */
+  const axPts = [new THREE.Vector3(-3,0,0), new THREE.Vector3(2.5,0,0)];
+  const axLine = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(axPts),
+    new THREE.LineBasicMaterial({color:0x1a8a6a, transparent:true, opacity:0.22})
+  );
+  three.scene.add(axLine);
+
+  /* ── LIGHT RAYS group (outside pivot) ── */
+  three.raysGroup = new THREE.Group();
+  three.scene.add(three.raysGroup);
+
+  /* ── CORRECTIVE LENS disc (outside pivot, in front of eye) ── */
+  const clRingMat = new THREE.MeshBasicMaterial({color:0x4a90d4, transparent:true, opacity:0.8, side:THREE.DoubleSide});
+  three.corrRing  = new THREE.Mesh(new THREE.RingGeometry(0.44,0.50,48), clRingMat);
+  three.corrRing.position.set(1.8, 0, 0);
+  three.corrRing.rotation.y = Math.PI/2;
+  three.scene.add(three.corrRing);
+
+  const clDiscMat = new THREE.MeshBasicMaterial({color:0x88ccff, transparent:true, opacity:0.08, side:THREE.DoubleSide});
+  three.corrDisc  = new THREE.Mesh(new THREE.CircleGeometry(0.48,48), clDiscMat);
+  three.corrDisc.position.copy(three.corrRing.position);
+  three.corrDisc.rotation.y = Math.PI/2;
+  three.scene.add(three.corrDisc);
+
+  /* ── ORBIT CONTROLS (manual) ── */
+  cv.addEventListener('mousedown', e=>{isOrbiting=true; lastMouse={x:e.clientX,y:e.clientY};});
+  window.addEventListener('mouseup', ()=>isOrbiting=false);
+  window.addEventListener('mousemove', e=>{
+    if(!isOrbiting) return;
+    eyeRot.y += (e.clientX-lastMouse.x)*0.006;
+    eyeRot.x += (e.clientY-lastMouse.y)*0.005;
+    eyeRot.x  = Math.max(-1.1, Math.min(1.1, eyeRot.x));
+    lastMouse = {x:e.clientX, y:e.clientY};
+  });
+  cv.addEventListener('touchstart', e=>{isOrbiting=true; lastMouse={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});
+  cv.addEventListener('touchmove',  e=>{
+    if(!isOrbiting) return;
+    eyeRot.y += (e.touches[0].clientX-lastMouse.x)*0.007;
+    eyeRot.x += (e.touches[0].clientY-lastMouse.y)*0.006;
+    lastMouse = {x:e.touches[0].clientX, y:e.touches[0].clientY};
+    e.preventDefault();
+  },{passive:false});
+  cv.addEventListener('touchend', ()=>isOrbiting=false);
+
+  update3D();
+  render3D();
+}
+
+function update3D(){
+  const objCm  = parseFloat(document.getElementById('objSlider').value);
+  const corrP  = parseFloat(document.getElementById('corrSlider').value);
+  document.getElementById('objVal').textContent  = objCm+' cm';
+  document.getElementById('corrVal').textContent = (corrP<0?'−':'+')+Math.abs(corrP).toFixed(2)+' D';
+
+  const OA_m  = objCm/100;
+  const P_eye = 1/0.015 + 1/OA_m;
+  const f_eye = 1/P_eye;
+  document.getElementById('i3P').innerHTML = P_eye.toFixed(2)+'<span> D</span>';
+  document.getElementById('i3F').innerHTML = (f_eye*1000).toFixed(2)+'<span> mm</span>';
+
+  // Derivation panel
+  ['d3s0','d3s1','d3s2','d3s3','d3s4'].forEach((id,i)=>{
+    const el=document.getElementById(id); if(!el) return;
+    setTimeout(()=>el.classList.add('live'), i*100);
+  });
+  document.getElementById('d3oa').textContent  = OA_m.toFixed(3);
+  document.getElementById('d3oa2').textContent = OA_m.toFixed(3);
+  document.getElementById('d3pval').textContent  = P_eye.toFixed(2);
+  document.getElementById('d3pcorr').textContent = corrP.toFixed(2);
+
+  // Lens bulges when object is close
+  if(three.lensGroup){
+    const t = Math.max(0, Math.min(1,(OA_m-0.10)/0.90));
+    const s = 1 + 0.40*(1-t);
+    three.lensGroup.scale.set(1, s, s);
+  }
+
+  // Pupil shrinks when object is close (accommodation)
+  if(three.pupil){
+    const t = Math.max(0, Math.min(1,(OA_m-0.10)/0.90));
+    const ps = 0.55 + 0.45*t;
+    three.pupil.scale.set(ps, ps, 1);
+  }
+
+  // Corrective lens visibility
+  const showCorr = Math.abs(corrP) > 0.1;
+  if(three.corrRing)  three.corrRing.visible  = showCorr;
+  if(three.corrDisc)  three.corrDisc.visible  = showCorr;
+
+  // Light rays — 5 lines: source → corrective lens → eye lens → retina
+  if(three.raysGroup){
+    while(three.raysGroup.children.length) three.raysGroup.remove(three.raysGroup.children[0]);
+    const clarity = Math.max(0, Math.min(1, 1-Math.abs(corrP-(window.rxP||-2))/5));
+    const focused = clarity > 0.82;
+    const rayColor = focused ? new THREE.Color(0.1, 0.9, 0.45) : new THREE.Color(0.9, 0.25, 0.18);
+    const offsets = [-0.32,-0.16,0,0.16,0.32];
+    offsets.forEach(off=>{
+      // Segment 1: far left → corrective lens plane (x=1.8)
+      const p1 = new THREE.Vector3(3.2, off, off*0.5);
+      const p2 = showCorr ? new THREE.Vector3(1.8, off, off*0.3) : new THREE.Vector3(1.02, off*0.55, 0);
+      // Segment 2: corrective lens → eye lens (x=0.35 inside pivot, but pivot may be rotated — use x=0.95 front of eye)
+      const p3 = new THREE.Vector3(0.95, off*(showCorr?0.55:0.55), 0);
+      // Segment 3: converge to retina focal point
+      const focalX = focused ? -0.92 : -0.65;
+      const p4 = new THREE.Vector3(focalX, 0, 0);
+
+      const seg1 = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+      const seg2 = new THREE.BufferGeometry().setFromPoints([p2, p3]);
+      const seg3 = new THREE.BufferGeometry().setFromPoints([p3, p4]);
+      const mat1 = new THREE.LineBasicMaterial({color:0x44aadd, transparent:true, opacity:0.45});
+      const mat3 = new THREE.LineBasicMaterial({color:rayColor, transparent:true, opacity:0.65});
+      three.raysGroup.add(new THREE.Line(seg1, mat1));
+      three.raysGroup.add(new THREE.Line(seg2, mat1));
+      three.raysGroup.add(new THREE.Line(seg3, mat3));
+    });
+    // Focus dot at retina
+    const dotGeo = new THREE.SphereGeometry(focused?0.055:0.08, 12, 8);
+    const dotMat = new THREE.MeshBasicMaterial({color: focused?0x22ee88:0xee4422});
+    const dot = new THREE.Mesh(dotGeo, dotMat);
+    dot.position.set(-0.92, 0, 0);
+    three.raysGroup.add(dot);
+  }
+
+  document.getElementById('br2').classList.add('ok');
+}
+
+function render3D(){
+  requestAnimationFrame(render3D);
+  animT += 0.009;
+  if(three.pivot){
+    three.pivot.rotation.y = eyeRot.y + Math.sin(animT*0.28)*0.010;
+    three.pivot.rotation.x = eyeRot.x + Math.sin(animT*0.35)*0.007;
+  }
+  // Fovea pulse
+  if(three.fovea) three.fovea.material.color.setHSL(0.12, 0.95, 0.50+0.12*Math.sin(animT*2.2));
+  // Inner light flicker
+  if(three.innerLight) three.innerLight.intensity = 1.6 + 0.4*Math.sin(animT*1.7);
+  if(three.renderer && three.scene && three.camera) three.renderer.render(three.scene, three.camera);
+}
+
+/* ══════════════════════════════════════════
+   S3 — DRAGGABLE LENS (with live math)
+══════════════════════════════════════════ */
+let lx_n=0.4,drag=false,lensOk=false,lt=0;
+
+function initLens(){
+  const cv=document.getElementById('lc');
+  cv.width=cv.clientWidth||800;cv.height=420;
+  document.body.classList.add('lens-mode');
+  cv.addEventListener('mousedown',()=>{drag=true;document.getElementById('dh').classList.add('hide');});
+  window.addEventListener('mouseup',()=>drag=false);
+  window.addEventListener('mousemove',e=>{if(!drag)return;const r=cv.getBoundingClientRect();lx_n=Math.max(.04,Math.min(.82,(e.clientX-r.left)/r.width));updLens();});
+  cv.addEventListener('touchstart',()=>drag=true,{passive:true});
+  cv.addEventListener('touchmove',e=>{if(!drag)return;const r=cv.getBoundingClientRect();lx_n=Math.max(.04,Math.min(.82,(e.touches[0].clientX-r.left)/r.width));updLens();e.preventDefault();},{passive:false});
+  window.addEventListener('touchend',()=>drag=false);
+  drawLens();updLens();
+}
+
+function updLens(){
+  const P=window.rxP||-2;
+  const OA_far=1/P;// m
+  const eyeX_n=0.64,retX_n=0.84;
+  const d=(eyeX_n-lx_n)/0.5;
+  const Pc=P*d;
+  const err=Math.abs(Pc-P);
+  const errPct=err/Math.abs(P);
+  const cl=Math.max(0,Math.min(100,100-errPct*85));
+  document.getElementById('l3pos').textContent=((eyeX_n-lx_n)*80).toFixed(0)+' mm';
+  document.getElementById('l3pwr').textContent=(Pc<0?'−':'')+Math.abs(Pc).toFixed(2)+' D';
+  document.getElementById('l3err').innerHTML=cl>88?'<span style="color:var(--teal)">0.0 mm ✓</span>':'<span style="color:var(--rust)">'+(errPct*3).toFixed(1)+' mm</span>';
+  document.getElementById('l3sta').innerHTML=cl>88?'<span style="color:var(--teal)">FOCUSED ✓</span>':'<span style="color:rgba(255,255,255,0.3)">Adjust</span>';
+  // Math ticker
+  document.getElementById('mt1').textContent=(OA_far*100).toFixed(1)+' cm';
+  document.getElementById('mt2').textContent=Pc.toFixed(2)+' D placed';
+  document.getElementById('mt3').innerHTML=cl>88?'<span style="color:var(--teal)">YES ✓</span>':'<span style="color:var(--rust)">Not yet</span>';
+  if(cl>88){document.getElementById('br3').classList.add('ok');lensOk=true;}
+  else if(errPct>.08){document.getElementById('br3').classList.remove('ok');lensOk=false;}
+}
+
+function drawLens(){
+  requestAnimationFrame(drawLens);
+  const cv=document.getElementById('lc');
+  if(!cv.getContext)return;
+  if(cv.width!==cv.clientWidth&&cv.clientWidth>0){cv.width=cv.clientWidth;cv.height=420;}
+  const ctx=cv.getContext('2d'),W=cv.width,H=cv.height,cy=H/2;
+  lt+=.018;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#08060f';ctx.fillRect(0,0,W,H);
+
+  const P=window.rxP||-2;
+  const eyeX=0.64*W,retX=0.84*W,lX=lx_n*W;
+  const d=(eyeX/W-lx_n)/0.5;const Pc=P*d;
+  const errPct=Math.abs(Pc-P)/Math.abs(P);
+  const cl=Math.max(0,Math.min(1,1-errPct*.85));
+  const focX=retX*cl+(retX-(1-cl)*W*.15)*(1-cl);
+  const corrLH=H*.35,eyeLH=H*.27;
+
+  // Grid lines (faint)
+  ctx.strokeStyle='rgba(255,255,255,0.03)';ctx.lineWidth=1;
+  for(let x=0;x<W;x+=W/8){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for(let y=0;y<H;y+=H/6){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+
+  // Optical axis
+  ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(W,cy);
+  ctx.strokeStyle='rgba(255,255,255,0.06)';ctx.lineWidth=1;ctx.setLineDash([4,6]);ctx.stroke();ctx.setLineDash([]);
+
+  // Source
+  ctx.beginPath();ctx.moveTo(14,cy+H*.22);ctx.lineTo(14,cy-H*.22);
+  ctx.strokeStyle='rgba(255,255,255,0.2)';ctx.lineWidth=2;ctx.stroke();
+  ctx.beginPath();ctx.moveTo(14,cy-H*.22-5);ctx.lineTo(8,cy-H*.22+8);ctx.lineTo(20,cy-H*.22+8);
+  ctx.fillStyle='rgba(255,255,255,0.2)';ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.12)';ctx.font='10px Syne';ctx.textAlign='center';ctx.fillText('∞',14,cy+H*.22+14);
+
+  // RAYS
+  const roffs=[-H*.22,-H*.13,0,H*.13,H*.22];
+  roffs.forEach((dy,ri)=>{
+    const bendY=cy+dy*(1+Pc*.03);
+    // Ray 1: source → corrective lens
+    ctx.beginPath();ctx.moveTo(18,cy+dy);ctx.lineTo(lX,cy+dy);
+    ctx.strokeStyle=`rgba(74,184,212,${.35+cl*.2})`;ctx.lineWidth=1.5;ctx.stroke();
+    // Ray 2: corrective lens → eye lens
+    ctx.beginPath();ctx.moveTo(lX,cy+dy);ctx.lineTo(eyeX,bendY);
+    ctx.strokeStyle=`rgba(74,184,212,${.3+cl*.2})`;ctx.lineWidth=1.5;ctx.stroke();
+    // Ray 3: eye lens → focus
+    const fc=cl>.88?'rgba(80,220,140,0.75)':'rgba(220,80,70,0.55)';
+    ctx.beginPath();ctx.moveTo(eyeX,bendY);ctx.lineTo(focX,cy);
+    ctx.strokeStyle=fc;ctx.lineWidth=1.5+ri*.07;ctx.stroke();
+    // Dashed overrun if blurry
+    if(cl<.88){ctx.beginPath();ctx.moveTo(focX,cy);ctx.lineTo(retX,cy+(focX<retX?0:0));ctx.strokeStyle='rgba(220,80,70,0.12)';ctx.lineWidth=1;ctx.setLineDash([2,4]);ctx.stroke();ctx.setLineDash([]);}
+  });
+
+  // ── CORRECTIVE LENS ──
+  const gCL=ctx.createRadialGradient(lX,cy,0,lX,cy,corrLH);
+  gCL.addColorStop(0,`rgba(80,160,230,${.1+cl*.1})`);gCL.addColorStop(1,'transparent');
+  ctx.beginPath();ctx.ellipse(lX,cy,W*.018,corrLH,0,0,Math.PI*2);ctx.fillStyle=gCL;ctx.fill();
+  ctx.beginPath();ctx.ellipse(lX,cy,W*.014,corrLH,0,0,Math.PI*2);
+  ctx.fillStyle=`rgba(130,200,255,.06)`;ctx.strokeStyle=`rgba(74,144,212,${.5+cl*.35})`;ctx.lineWidth=2;ctx.fill();ctx.stroke();
+  ctx.strokeStyle=`rgba(74,144,212,.6)`;ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(lX,cy-corrLH-8);ctx.lineTo(lX,cy+corrLH+8);ctx.stroke();
+  [[cy-corrLH-8,-1],[cy+corrLH+8,1]].forEach(([y,d2])=>{ctx.beginPath();ctx.moveTo(lX,y);ctx.lineTo(lX-5,y-d2*9);ctx.lineTo(lX+5,y-d2*9);ctx.fillStyle='rgba(74,144,212,.6)';ctx.fill();});
+  ctx.fillStyle=`rgba(74,144,212,${.5+cl*.3})`;ctx.font='10px Syne';ctx.textAlign='center';ctx.fillText('Glasses',lX,cy+corrLH+17);
+  ctx.fillStyle='rgba(74,144,212,.55)';ctx.font='bold 11px DM Mono';ctx.fillText(Pc.toFixed(2)+' D',lX,cy-corrLH-15);
+
+  // ── EYE LENS ──
+  ctx.beginPath();ctx.ellipse(eyeX,cy,W*.013,eyeLH,0,0,Math.PI*2);
+  ctx.fillStyle='rgba(110,190,240,.09)';ctx.strokeStyle='rgba(110,190,240,.55)';ctx.lineWidth=2;ctx.fill();ctx.stroke();
+  ctx.strokeStyle='rgba(110,190,240,.6)';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.moveTo(eyeX,cy-eyeLH-7);ctx.lineTo(eyeX,cy+eyeLH+7);ctx.stroke();
+  [[cy-eyeLH-7,-1],[cy+eyeLH+7,1]].forEach(([y,d2])=>{ctx.beginPath();ctx.moveTo(eyeX,y);ctx.lineTo(eyeX-4,y+d2*8);ctx.lineTo(eyeX+4,y+d2*8);ctx.fillStyle='rgba(110,190,240,.55)';ctx.fill();});
+  ctx.fillStyle='rgba(255,255,255,.2)';ctx.font='10px Syne';ctx.textAlign='center';ctx.fillText('Eye lens',eyeX,cy+eyeLH+17);
+  ctx.fillStyle='rgba(255,255,255,.18)';ctx.font='bold 10px DM Mono';ctx.fillText((66.67+(P*d*.5)).toFixed(1)+' D',eyeX,cy-eyeLH-14);
+
+  // ── RETINA ──
+  ctx.beginPath();ctx.moveTo(retX,cy-H*.38);ctx.lineTo(retX,cy+H*.38);
+  ctx.strokeStyle='rgba(96,200,120,.75)';ctx.lineWidth=3;ctx.stroke();
+  for(let i=-3;i<=3;i++){ctx.beginPath();ctx.moveTo(retX-4,cy+i*H*.1);ctx.lineTo(retX+4,cy+i*H*.1);ctx.strokeStyle='rgba(96,200,120,.25)';ctx.lineWidth=1;ctx.stroke();}
+  ctx.fillStyle='rgba(96,200,120,.4)';ctx.font='9px Syne';ctx.textAlign='center';ctx.fillText("OA'=+15mm",retX,cy+H*.4+13);
+
+  // ── FOCUS DOT ──
+  const fp=.5+.5*Math.sin(lt*3);
+  if(cl>.88){
+    ctx.beginPath();ctx.arc(retX,cy,8,0,Math.PI*2);
+    ctx.fillStyle=`rgba(80,220,140,${.8+.2*fp})`;ctx.shadowColor='#50dc8c';ctx.shadowBlur=14*fp;ctx.fill();ctx.shadowBlur=0;
+    ctx.fillStyle='rgba(80,220,140,.7)';ctx.font='bold 11px Syne';ctx.textAlign='left';ctx.fillText('✓ SHARP',retX+12,cy+4);
+  } else {
+    ctx.beginPath();ctx.arc(focX,cy,7,0,Math.PI*2);ctx.fillStyle='rgba(220,70,60,.7)';ctx.fill();
+    ctx.beginPath();ctx.arc(focX,cy,14,0,Math.PI*2);ctx.strokeStyle='rgba(220,70,60,.25)';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.fillStyle='rgba(220,70,60,.5)';ctx.font='10px Syne';ctx.textAlign='center';ctx.fillText('Blurry',focX,cy+22);
+    ctx.strokeStyle='rgba(96,200,120,.2)';ctx.lineWidth=1;ctx.setLineDash([2,5]);
+    ctx.beginPath();ctx.moveTo(focX+10,cy);ctx.lineTo(retX-8,cy);ctx.stroke();ctx.setLineDash([]);
+  }
+  // Distance labels
+  ctx.fillStyle='rgba(255,255,255,.1)';ctx.font='9px DM Mono';ctx.textAlign='center';
+  ctx.fillText('OA (far point) = '+(1/P*100).toFixed(1)+' cm',lX+(eyeX-lX)/2,cy-H*.42);
+  ctx.textAlign='left';
+
+  // Drag pulse if not started
+  if(!drag&&!lensOk){const pp=.5+.5*Math.sin(lt*1.2);ctx.strokeStyle=`rgba(74,144,212,${.15+.2*pp})`;ctx.lineWidth=1;ctx.beginPath();ctx.arc(lX,cy,20+pp*6,0,Math.PI*2);ctx.stroke();}
+}
+
+/* ══════════════════════════════════════════
+   S4 — ACCOMMODATION
+══════════════════════════════════════════ */
+const SCENES4=[
+  {icon:'🌄',name:'Mountain / Stars',dist:'OA → −∞',OA:null},
+  {icon:'🖥',name:'Computer screen',dist:'OA = −60 cm',OA:-.6},
+  {icon:'📱',name:'Smartphone',dist:'OA = −35 cm',OA:-.35},
+  {icon:'📖',name:'Book',dist:'OA = −25 cm',OA:-.25},
+  {icon:'🔬',name:'Microscope slide',dist:'OA = −10 cm',OA:-.10},
+];
+let accIdx=0,accAnim=0,accT=0;
+
+function calcP(OA){return OA===null?1/.015:1/.015-1/OA;}
+
+function initAcc(){
+  const w=document.getElementById('scards');w.innerHTML='';
+  SCENES4.forEach((sc,i)=>{
+    const P=calcP(sc.OA);
+    const c=document.createElement('div');c.className='scc'+(i===0?' on':'');
+    c.innerHTML=`<div class="scc-icon">${sc.icon}</div><div><div class="scc-name">${sc.name}</div><div class="scc-dist">${sc.dist}</div></div><div class="scc-p">${P.toFixed(2)} D</div>`;
+    c.onclick=()=>pickAcc(i);w.appendChild(c);
+  });
+  const ac=document.getElementById('ac2');ac.width=ac.clientWidth||460;ac.height=260;
+  drawAcc();
+}
+
+function pickAcc(i){
+  accIdx=i;
+  document.querySelectorAll('.scc').forEach((c,j)=>c.classList.toggle('on',j===i));
+  const P=calcP(SCENES4[i].OA),P0=calcP(null);
+  const OAstr=SCENES4[i].OA===null?'−∞':(SCENES4[i].OA*100).toFixed(0)+' cm';
+  const OAm=SCENES4[i].OA===null?'−∞':SCENES4[i].OA.toFixed(3)+' m';
+  document.getElementById('amoa').textContent=OAstr;
+  document.getElementById('amp').textContent=P.toFixed(2)+' D';
+  document.getElementById('amdp').textContent='+'+(P-P0).toFixed(2)+' D';
+  // Full derivation
+  const inv=SCENES4[i].OA===null?'0':(1/SCENES4[i].OA).toFixed(2);
+  document.getElementById('amderiv').innerHTML=
+    `P = 1/OA′ − 1/OA<br>`+
+    `P = 1/<span class="hl">0.015</span> − 1/(<span class="hl">${OAm}</span>)<br>`+
+    `P = <span class="hr">66.67</span> − (<span class="hr">${inv}</span>)<br>`+
+    `P = <span class="hr">${P.toFixed(2)} D</span>  &nbsp; ΔP = <span class="hr">+${(P-P0).toFixed(2)} D</span>`;
+}
+
+let accObjX=0;
+function drawAcc(){
+  requestAnimationFrame(drawAcc);
+  const cv=document.getElementById('ac2');
+  if(!cv||!cv.clientWidth)return;
+  if(cv.width!==cv.clientWidth){cv.width=cv.clientWidth;cv.height=260;}
+  const ctx=cv.getContext('2d'),W=cv.width,H=cv.height,cy=H/2;
+  accT+=.022;
+  accAnim+=(accIdx-accAnim)*.06;
+  const t=accAnim/4;
+
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+
+  const lX=W*.52,retX=lX+W*.32;
+  const tObjX=accIdx===0?W*.04:W*(.07+accIdx*.12);
+  if(!accObjX)accObjX=tObjX;accObjX+=(tObjX-accObjX)*.06;
+  const oX=accObjX;
+  const lh=H*.28*(1+t*.25);
+
+  // Axis
+  ctx.beginPath();ctx.moveTo(0,cy);ctx.lineTo(W,cy);ctx.strokeStyle='rgba(0,0,0,.06)';ctx.lineWidth=1;ctx.setLineDash([4,5]);ctx.stroke();ctx.setLineDash([]);
+
+  // Rays
+  [-H*.2,0,H*.2].forEach(dy=>{
+    const sy=accIdx===0?cy+dy:cy+dy*(.85-t*.2);
+    ctx.beginPath();ctx.moveTo(oX+7,sy);ctx.lineTo(lX,sy+(sy-cy)*.04);ctx.strokeStyle='rgba(26,138,122,.4)';ctx.lineWidth=1.5;ctx.stroke();
+    ctx.beginPath();ctx.moveTo(lX,sy+(sy-cy)*.04);ctx.lineTo(retX,cy);ctx.strokeStyle='rgba(212,168,42,.55)';ctx.lineWidth=1.5;ctx.stroke();
+  });
+
+  // Object
+  if(accIdx>0){ctx.beginPath();ctx.moveTo(oX,cy+H*.18);ctx.lineTo(oX,cy-H*.18);ctx.strokeStyle='rgba(196,98,45,.6)';ctx.lineWidth=2;ctx.stroke();ctx.beginPath();ctx.moveTo(oX,cy-H*.18-5);ctx.lineTo(oX-5,cy-H*.18+7);ctx.lineTo(oX+5,cy-H*.18+7);ctx.fillStyle='rgba(196,98,45,.6)';ctx.fill();}
+  else{[-H*.16,0,H*.16].forEach(dy=>{ctx.beginPath();ctx.moveTo(4,cy+dy);ctx.lineTo(lX-10,cy+dy);ctx.strokeStyle='rgba(196,98,45,.25)';ctx.lineWidth=1;ctx.stroke();});}
+
+  // Lens
+  const lg=ctx.createRadialGradient(lX,cy,0,lX,cy,lh);lg.addColorStop(0,'rgba(110,190,240,.14)');lg.addColorStop(1,'rgba(110,190,240,.01)');
+  ctx.beginPath();ctx.ellipse(lX,cy,W*.018*(1+t*.3),lh,0,0,Math.PI*2);ctx.fillStyle=lg;ctx.fill();
+  ctx.beginPath();ctx.ellipse(lX,cy,W*.015*(1+t*.3),lh,0,0,Math.PI*2);
+  ctx.fillStyle='rgba(110,190,240,.07)';ctx.strokeStyle=`rgba(80,160,200,${.55+t*.35})`;ctx.lineWidth=2+t*1.5;ctx.fill();ctx.stroke();
+  ctx.strokeStyle='rgba(80,160,200,.65)';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(lX,cy-lh-7);ctx.lineTo(lX,cy+lh+7);ctx.stroke();
+  [[cy-lh-7,-1],[cy+lh+7,1]].forEach(([y,d])=>{ctx.beginPath();ctx.moveTo(lX,y);ctx.lineTo(lX-4,y+d*9);ctx.lineTo(lX+4,y+d*9);ctx.fillStyle='rgba(80,160,200,.65)';ctx.fill();});
+  const P4=calcP(SCENES4[Math.round(Math.min(accAnim,4))]?.OA||null);
+  ctx.fillStyle='rgba(26,138,122,.7)';ctx.font='bold 10px Syne';ctx.textAlign='center';ctx.fillText('P='+P4.toFixed(2)+' D',lX,cy-lh-13);
+
+  // Retina
+  ctx.beginPath();ctx.moveTo(retX,cy-H*.36);ctx.lineTo(retX,cy+H*.36);ctx.strokeStyle='rgba(96,200,120,.75)';ctx.lineWidth=3;ctx.stroke();
+
+  // Focus dot
+  const pp=.5+.5*Math.sin(accT*3);
+  ctx.beginPath();ctx.arc(retX,cy,6,0,Math.PI*2);ctx.fillStyle=`rgba(80,200,120,${.7+.3*pp})`;ctx.shadowColor='#50c878';ctx.shadowBlur=10*pp;ctx.fill();ctx.shadowBlur=0;
+  ctx.fillStyle='rgba(0,0,0,.3)';ctx.font='9px Syne';ctx.textAlign='center';ctx.fillText("OA'=+15mm",retX,cy+H*.37+11);
+  ctx.textAlign='left';
+}
+
+/* ══════════════════════════════════════════
+   S5 — PRESCRIPTION
+══════════════════════════════════════════ */
+function buildRx(){
+  const P = window.rxP !== null && window.rxP !== undefined ? window.rxP : 0;
+  const isPerfect = Math.abs(P) < 0.1;
+  const isM = P < -0.1;
+  const isH = P > 0.1;
+
+  let condition, condClass, farPtTxt, powerTxt, focalTxt, lensTypeTxt, noteTxt;
+
+  if(isPerfect){
+    condition   = '20/20 — Perfect Vision ✓';
+    condClass   = 'rx-fv pos';
+    farPtTxt    = '∞ (no far point limit)';
+    powerTxt    = '0.00 D';
+    focalTxt    = '∞';
+    lensTypeTxt = 'No correction required';
+    noteTxt     = 'Your eye focuses parallel rays from infinity exactly onto the retina without any corrective lens. The crystalline lens provides exactly the right 66.67 D at rest. You have emmetropic (normal) vision.';
+  } else {
+    const OA_m = 1/P;
+    const f_m  = 1/P;
+    const sev  = Math.abs(P)<1?'Very mild':Math.abs(P)<3?'Mild':Math.abs(P)<6?'Moderate':'High';
+    condition   = isM ? 'Myopia (Nearsightedness)' : 'Hyperopia (Farsightedness)';
+    condClass   = 'rx-fv ' + (isM ? 'neg' : 'pos');
+    farPtTxt    = (OA_m*100).toFixed(1) + ' cm';
+    powerTxt    = (P>0?'+':'') + P.toFixed(2) + ' D';
+    focalTxt    = (Math.abs(f_m)*100).toFixed(1) + ' cm';
+    lensTypeTxt = isM ? 'Diverging (concave) lens' : 'Converging (convex) lens';
+    noteTxt     = isM
+      ? `${sev} myopia. Your far point is ${(Math.abs(OA_m)*100).toFixed(0)} cm — beyond that everything blurs. A diverging lens shifts parallel rays so they appear to come from your far point.`
+      : `${sev} hyperopia. Your eye lens is too weak to focus near objects. A converging lens adds the missing ${P.toFixed(2)} D.`;
+  }
+
+  document.getElementById('rc1').textContent = condition;
+  document.getElementById('rc1').className   = condClass;
+  document.getElementById('rc2').textContent = farPtTxt;
+  document.getElementById('rc3').textContent = powerTxt;
+  document.getElementById('rc3').className   = 'rx-fv big ' + (isPerfect?'pos':isM?'neg':'pos');
+  document.getElementById('rc4').textContent = focalTxt;
+  document.getElementById('rc5').textContent = lensTypeTxt;
+  document.getElementById('rcnote').textContent = noteTxt;
+
+  // Animate the big power number counting up
+  if(!isPerfect){
+    let t=0; const target=Math.abs(P); const el=document.getElementById('rc3');
+    const anim=setInterval(()=>{
+      t+=target/30;
+      if(t>=target){t=target;clearInterval(anim);}
+      el.textContent=(P<0?'−':'+')+(t).toFixed(2)+' D';
+    },30);
+  }
+
+  // Derivation chain
+  const dc=document.getElementById('dchain');
+  if(isPerfect){
+    dc.innerHTML=`<div class="dc-title">// Why no correction is needed</div>
+      <div class="dc-step"><span class="dc-num">1</span><span class="dc-content">For a relaxed emmetropic eye: OA → <span class="gold">−∞</span></span></div>
+      <div class="dc-step"><span class="dc-num">2</span><span class="dc-content">Retina at OA′ = <span class="hl">+0.015 m</span></span></div>
+      <div class="dc-step"><span class="dc-num">3</span><span class="dc-content">P = 1/OA′ − 1/OA = 1/0.015 − 0 = <span class="gold">+66.67 D</span></span></div>
+      <div class="dc-step"><span class="dc-num">4</span><span class="dc-content">Eye lens supplies exactly <span class="gold">66.67 D</span> — parallel rays focus precisely on the retina.</span></div>
+      <div class="dc-step"><span class="dc-num">5</span><span class="dc-content">P<sub>glasses</sub> = <span class="gold">0.00 D</span> — glasses would add zero correction.</span></div>`;
+  } else {
+    const OA_m=1/P;
+    dc.innerHTML=`<div class="dc-title">// Step-by-step derivation of P<sub>glasses</sub></div>
+      <div class="dc-step"><span class="dc-num">1</span><span class="dc-content">Far point: OA = <span class="gold">${(OA_m*100).toFixed(1)} cm = ${OA_m.toFixed(4)} m</span></span></div>
+      <div class="dc-step"><span class="dc-num">2</span><span class="dc-content">Retina: OA′ = <span class="hl">+0.015 m</span> (fixed)</span></div>
+      <div class="dc-step"><span class="dc-num">3</span><span class="dc-content">P = 1/OA′ − 1/OA</span></div>
+      <div class="dc-step"><span class="dc-num">4</span><span class="dc-content">P = 1/<span class="hl">0.015</span> − 1/<span class="hl">(${OA_m.toFixed(4)})</span> = <span class="gold">${(1/0.015).toFixed(2)} − (${(1/OA_m).toFixed(2)})</span></span></div>
+      <div class="dc-step"><span class="dc-num">5</span><span class="dc-content">P<sub>glasses</sub> = <span class="gold">${P.toFixed(2)} D</span> → f′ = <span class="gold">${(Math.abs(1/P)*100).toFixed(1)} cm</span></span></div>`;
+  }
+  document.body.classList.remove('lens-mode');
+  // Style card based on result
+  const card=document.getElementById('rxcard');
+  card.classList.toggle('perfect', isPerfect);
+  document.querySelector('.rx-stamp').innerHTML=isPerfect?'20/20<br>Perfect ✓':'ClearSight<br>Verified ✓';
+}
+
+function restart(){
+  window.rxP=null;
+  chartDone=false;
+  const sl=document.getElementById('ps');
+  if(sl)sl.value=0;
+  go(0);
+}
+
+/* RESIZE */
+window.addEventListener('resize',()=>{
+  const lc=document.getElementById('lc');if(lc&&lc.clientWidth){lc.width=lc.clientWidth;lc.height=420;}
+  const ac=document.getElementById('ac2');if(ac&&ac.clientWidth){ac.width=ac.clientWidth;ac.height=260;}
+  if(three.renderer){const cv=document.getElementById('threeCanvas');three.renderer.setSize(cv.clientWidth||innerWidth,cv.clientHeight||innerHeight);three.camera.aspect=(cv.clientWidth||innerWidth)/(cv.clientHeight||innerHeight);three.camera.updateProjectionMatrix();}
+});
+</script>
+</body>
+</html>
