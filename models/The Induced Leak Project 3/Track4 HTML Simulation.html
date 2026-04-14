@@ -574,9 +574,11 @@ function update() {
 
   const emf = [];
   const Rc = 50;
+  // e(r) ∝ 1/r — distance decay normalised to reference d = 1 mm
+  const distDecay = 1e-3 / p.dist;
   for(let i=0;i<N;i++) {
     let di = i>0 ? (victim[i]-victim[i-1])/(dt*Rc) : 0;
-    const raw = -p.M * di * shieldFactor;
+    const raw = -p.M * di * shieldFactor * distDecay;
     emf.push(raw + p.noise * gaussian());
   }
 
