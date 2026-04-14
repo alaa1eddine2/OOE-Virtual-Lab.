@@ -58,7 +58,9 @@
 ## 🔗 LIVE DEMO
 > **Instruction for Project Leaders:** Once you have activated **GitHub Pages** in your settings, replace the URL below with your actual live link.
 
-[🚀 Click here to view the Interactive Simulation](https://your-username.github.io/your-repo-name/)
+[Project 2: retina scanner explanation](https://alaa1eddine2.github.io/OOE-Virtual-Lab./models/retina-scanner-P2/explanation.html)
+[Project 2: retina scanner test](https://alaa1eddine2.github.io/OOE-Virtual-Lab./models/retina-scanner-P2/interactive.html)
+[Project 3: induced leak simulation](https://alaa1eddine2.github.io/OOE-Virtual-Lab./models/induced-leak-P3/simulation.html)
 
 ---
 
